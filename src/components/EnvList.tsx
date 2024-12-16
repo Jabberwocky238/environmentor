@@ -8,7 +8,7 @@ export default function EnvList() {
     const store = useStore();
     const envStore = useEnvStore();
 
-    // const { createTask } = envStore;
+    const { createTask } = envStore;
     const { setEnvVar, setEditingValue, setAdding, setBuffer } = store;
 
     useEffect(() => {

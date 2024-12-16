@@ -1,4 +1,5 @@
 .row {
+    height: 100%;
     display: flex;
     justify-content: center;
 }
@@ -11,18 +12,17 @@
     width: 70%;
 }
 
-.col30 > .env-var-list {
+.col30>.env-var-list {
     text-align: left;
 }
 
-.col70 > .env-var-list {
+.col70>.env-var-list {
     text-align: left;
     height: 70%;
-    overflow-y: scroll;
     overflow-x: hidden;
 }
 
-.col70 > .console {
+.col70>.console {
     text-align: left;
     background-color: black;
 }

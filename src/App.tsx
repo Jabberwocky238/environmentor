@@ -11,9 +11,7 @@ function App() {
   const store = useEnvStore();
 
   useEffect(() => {
-    store.get_all().then((envs) => {
-      console.log(envs);
-    });
+    store.load();
   }, []);
 
   return (
@@ -22,15 +20,14 @@ function App() {
         <div className="col30">
           <EnvList></EnvList>
         </div>
-
         <div className="col70">
           <ValueList></ValueList>
-
           <div className="console">
-
-
+            <button onClick={() => {
+              store.queue.optimise();
+              console.log(store.queue);
+            }}>Conform</button>
           </div>
-
         </div>
       </div>
     </main>

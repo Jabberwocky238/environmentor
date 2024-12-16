@@ -8,8 +8,6 @@ export default function EnvList() {
     const { setEditingValue, setAdding, setBuffer } = store;
     const { createTask } = envStore;
     
-    const addRef = useRef<HTMLInputElement>();
-
     return (
         <>
             <strong>当前选择的环境变量是：{store.currentEnvVar}</strong>
@@ -21,7 +19,7 @@ export default function EnvList() {
                                 setEditingValue(v);
                             }}>{v}</div>
 
-                        <form onSubmit={(e) => e.preventDefault()} style={{ display: v === store.curEditVal ? "block" : "none" }}>
+                        <div style={{ display: v === store.curEditVal ? "block" : "none" }}>
                             <input
                                 onChange={(e) => {
                                     setBuffer(e.currentTarget.value)
@@ -35,27 +33,28 @@ export default function EnvList() {
                                 setEditingValue("");
                                 setBuffer("");
                             }}>Conform</button>
-                            <button>Delete</button>
-                        </form>
+                            <button onClick={() => {
+                                createTask(TaskType.DeleteValue, store.currentEnvVar, store.buffer);
+                                setEditingValue("");
+                                setBuffer("");
+                            }}>Delete</button>
+                        </div>
                     </>
                 )) : null}
 
                 <button onClick={() => setAdding(!store.isAdding)}>Add new Value to {store.currentEnvVar}</button>
-                <form onSubmit={(e) => e.preventDefault()} style={{ display: store.isAdding ? "block" : "none" }}>
+                <div style={{ display: store.isAdding ? "block" : "none" }}>
                     <input
-                        ref={addRef}
                         onChange={(e) => setBuffer(e.currentTarget.value)}
                         placeholder="Enter value"
+                        value={store.buffer}
                     />
                     <button onClick={() => {
                         createTask(TaskType.AddValue, store.currentEnvVar, store.buffer);
                         setAdding(false);
                         setBuffer("");
-                        if (addRef.current) {
-                            addRef.current.value = "";
-                        }
                     }}>+</button>
-                </form>
+                </div>
             </div>
         </>
     )
