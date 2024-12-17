@@ -8,19 +8,18 @@ export default function EnvList() {
     const store = useStore();
     const envStore = useEnvStore();
 
-    const { createTask } = envStore;
+    // const { createTask } = envStore;
     const { setEnvVar, setEditingValue, setAdding, setBuffer } = store;
 
     useEffect(() => {
-        setEnvKeys(Object.keys(envStore.envs));
+        setEnvKeys(Object.keys(envStore.envs).sort());
     }, [envStore.envs]);
 
     return (
         <>
-            <h1>Welcome to Tauri + React</h1>
-            <div key="left" className="env-var-list">
+            <div className="var-list">
                 {envKeys.map((key) => (
-                    <div key={key} className="pointer"
+                    <div key={key} className="var-item"
                         onClick={() => {
                             setEnvVar(key)
                             setEditingValue("");

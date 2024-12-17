@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { useEnvStore, TaskType } from "../core";
 import { useStore } from "./store";
 
@@ -7,19 +6,32 @@ export default function EnvList() {
     const envStore = useEnvStore();
     const { setEditingValue, setAdding, setBuffer } = store;
     const { createTask } = envStore;
-    
+
+    const btnAdd = () => setAdding(!store.isAdding);
+
+    const btnFlush = () => {
+        envStore.queue.optimise();
+        envStore.queue.execute();
+        console.log(envStore.queue);
+    }
     return (
         <>
+            <div>
+                <button onClick={btnAdd}>Add</button>
+                <button onClick={btnFlush}>Flush</button>
+            </div>
             <strong>当前选择的环境变量是：{store.currentEnvVar}</strong>
-            <div className="env-var-list">
+            <div className="value-list">
                 {envStore.envs[store.currentEnvVar] ? envStore.envs[store.currentEnvVar].map((v) => (
                     <>
-                        <div id={Math.random().toString()} className="pointer"
+                        <div className="value-item"
                             style={{ display: v === store.curEditVal ? "none" : "block" }} onClick={() => {
                                 setEditingValue(v);
+                                setBuffer(v);
                             }}>{v}</div>
 
-                        <div style={{ display: v === store.curEditVal ? "block" : "none" }}>
+                        <div className="value-item-editing"
+                            style={{ display: v === store.curEditVal ? "flex" : "none" }}>
                             <input
                                 onChange={(e) => {
                                     setBuffer(e.currentTarget.value)
@@ -42,8 +54,8 @@ export default function EnvList() {
                     </>
                 )) : null}
 
-                <button onClick={() => setAdding(!store.isAdding)}>Add new Value to {store.currentEnvVar}</button>
-                <div style={{ display: store.isAdding ? "block" : "none" }}>
+                <div className="value-item-editing" 
+                    style={{ display: store.isAdding ? "flex" : "none" }}>
                     <input
                         onChange={(e) => setBuffer(e.currentTarget.value)}
                         placeholder="Enter value"

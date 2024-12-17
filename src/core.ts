@@ -10,7 +10,7 @@ export enum TaskType {
     DeleteVariable,
 }
 
-interface Task {
+export interface Task {
     t: TaskType
     variable: string
 }
@@ -260,7 +260,7 @@ export class TaskQueue {
 
     async execute() {
         const tempEnvMap = await get_all();
-
+        
         while (this.queue.length > 0) {
             const task = this.queue.shift();
             // 向前寻找
@@ -366,9 +366,9 @@ async function get_all(): Promise<EnvHashMap> {
     return invoke("get_all");
 }
 
-async function get_one(variable: string): Promise<string[]> {
-    return invoke("get_one", { var: variable });
-}
+// async function get_one(variable: string): Promise<string[]> {
+//     return invoke("get_one", { var: variable });
+// }
 
 async function set_one(variable: string, values: string[]): Promise<string[]> {
     const value = values.join(";");

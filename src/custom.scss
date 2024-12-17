@@ -1,0 +1,112 @@
+.row {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    background-color: #1e1e1e;
+
+    --var-col-width: 25%;
+    --main-col-width: 75%;
+    --task-col-width: 0%;
+
+    --border-radius-general: 8px;
+
+    .var-col {
+        height: inherit;
+        padding: 12px;
+        width: var(--var-col-width);
+
+        .var-list {
+            height: 100%;
+            overflow: scroll;
+            border-radius: var(--border-radius-general);
+            background-color: #363636;
+
+            &::-webkit-scrollbar {
+                width: 0;
+            }
+
+            .var-item {
+                padding: 8px;
+                border-radius: var(--border-radius-general);
+                transition: border-color 0.25s;
+                border: 1px solid transparent;                
+                cursor: pointer;
+
+                &:hover {
+                    border-color: #396cd8;
+                }
+            }
+        }
+    }
+
+    .main-col {
+        height: inherit;
+        padding: 12px;
+        width: var(--main-col-width);
+
+        .value-list {
+            height: 80%;
+            overflow: scroll;
+            border-radius: var(--border-radius-general);
+            background-color: #363636;          
+
+            &::-webkit-scrollbar {
+                width: 0;
+            }
+
+            .value-item, .value-item-editing {
+                width: 100%;
+                cursor: pointer;
+            }
+
+            .value-item {
+                padding: var(--border-radius-general);
+            }
+            
+            .value-item-editing {
+                color: white;
+                display: flex;
+
+                input {
+                    flex-grow: 1;
+                }
+            }
+        }
+    }
+
+    .task-col {
+        height: inherit;
+        padding: 12px;
+        width: var(--task-col-width);
+
+        .task-list {
+            height: 100%;
+            overflow: scroll;
+            border-radius: var(--border-radius-general);
+            background-color: #363636;
+
+            
+            &::-webkit-scrollbar {
+                width: 0;
+            }
+
+            .task-item {
+                padding: 8px;
+                margin: 8px 8px;
+
+                border-radius: var(--border-radius-general);
+                background-color: #14254b;
+
+                text-align: center;
+
+                transition: background-color 0.25s;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #396cd8;
+                }
+            }
+        }
+    }
+
+}

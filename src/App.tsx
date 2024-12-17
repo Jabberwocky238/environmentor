@@ -1,33 +1,26 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 // import reactLogo from "./assets/react.svg";
-import { type EnvHashMap, useEnvStore } from "./core";
+import { useEnvStore } from "./core";
 import "./App.css";
-import "./custom.css";
+import "./custom.scss";
 import EnvList from "./components/EnvList";
 import ValueList from "./components/ValueList";
 
-
 function App() {
-  const store = useEnvStore();
+  const envStore = useEnvStore();
 
   useEffect(() => {
-    store.load();
+    envStore.load();
   }, []);
 
   return (
     <main className="container">
       <div className="row">
-        <div className="col30">
+        <div className="var-col">
           <EnvList></EnvList>
         </div>
-        <div className="col70">
+        <div className="main-col">
           <ValueList></ValueList>
-          <div className="console">
-            <button onClick={() => {
-              store.queue.optimise();
-              console.log(store.queue);
-            }}>Conform</button>
-          </div>
         </div>
       </div>
     </main>
