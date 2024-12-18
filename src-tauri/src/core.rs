@@ -1,78 +1,72 @@
 use serde::{Deserialize, Serialize};
+use tauri::ipc::IpcResponse;
+use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-struct AddValueTask {
-    variable: String,
-    value: String,
-}
-
-impl AddValueTask {
-    pub fn new(variable: &str, value: &str) -> Self {
-        AddValueTask {
-            variable: variable.to_string(),
-            value: value.to_string(),
+macro_rules! declare_task {
+    ($name:ident, $($param:ident), *) => {
+        #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+        pub struct $name {
+            $(
+                $param: String,
+            )*
         }
-    }
-}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-struct ModifyValueTask {
-    variable: String,
-    old_value: String,
-    new_value: String,
-}
-
-impl ModifyValueTask {
-    pub fn new(variable: &str, old_value: &str, new_value: &str) -> Self {
-        ModifyValueTask {
-            variable: variable.to_string(),
-            old_value: old_value.to_string(),
-            new_value: new_value.to_string(),
+        impl $name {
+            pub fn new($($param: &str), *) -> Self {
+                $name {
+                    $(
+                        $param: $param.to_string(),
+                    )*
+                }
+            }
         }
-    }
-}
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-struct DeleteValueTask {
-    variable: String,
-    value: String,
-}
-
-impl DeleteValueTask {
-    pub fn new(variable: &str, value: &str) -> Self {
-        DeleteValueTask {
-            variable: variable.to_string(),
-            value: value.to_string(),
+        impl Into<Task> for $name {
+            fn into(self) -> Task {
+                Task::$name(self)
+            }
         }
-    }
+    };
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-enum Task {
-    AddValue(AddValueTask),
-    ModifyValue(ModifyValueTask),
-    DeleteValue(DeleteValueTask),
+declare_task!(AddValue, variable, value);
+declare_task!(ModifyValue, variable, old_value, new_value);
+declare_task!(DeleteValue, variable, value);
+
+#[derive(Deserialize, PartialEq, Eq, Hash, Clone)]
+pub enum Task {
+    AddValue(AddValue),
+    ModifyValue(ModifyValue),
+    DeleteValue(DeleteValue),
     // AddVariable,
     // ModifyVariable,
     // DeleteVariable,
 }
 
-
-macro_rules! createTask {
-    (addvalue, $variable:expr, $value:expr) => {
-        Task::AddValue(AddValueTask::new($variable, $value))
-    };
-    (modvalue, $variable:expr, $old_value:expr, $new_value:expr) => {
-        Task::ModifyValue(ModifyValueTask::new($variable, $old_value, $new_value))
-    };
-    (delvalue, $variable:expr, $value:expr) => {
-        Task::DeleteValue(DeleteValueTask::new($variable, $value))
-    };
+impl Serialize for Task {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Task::AddValue(task) => task.serialize(serializer),
+            Task::ModifyValue(task) => task.serialize(serializer),
+            Task::DeleteValue(task) => task.serialize(serializer),
+        }
+    }
 }
 
-#[derive(Serialize, Deserialize)]
-struct TaskQueue {
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct TaskQueue {
     tasks: Vec<Task>,
+}
+
+impl<TaskQueue> IpcResponse for TaskQueue {
+    fn body(self) -> tauri::Result<tauri::ipc::InvokeResponseBody> {
+        let json = serde_json::to_value(self).unwrap();
+        Ok(tauri::ipc::InvokeResponseBody::Json(json))
+    }
 }
 
 impl TaskQueue {
@@ -163,4 +157,12 @@ impl TaskQueue {
     pub fn execute(&mut self) {
         self.tasks.clear();
     }
+}
+type EnvHashMap = HashMap<String, Vec<String>>;
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct AppState {
+    pub old_env: EnvHashMap,
+    pub new_env: EnvHashMap,
+    pub task_queue: TaskQueue,
 }
