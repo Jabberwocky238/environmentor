@@ -1,7 +1,8 @@
 mod core;
 
-use core::{AddValue, AppState, DeleteValue, ModifyValue};
-use std::{collections::HashMap, sync::Mutex};
+use core::AppState;
+use core::EnvHashMap;
+use std::sync::Mutex;
 use tauri::{Context, Manager, State, Window};
 
 // #[tauri::command]
@@ -10,65 +11,45 @@ use tauri::{Context, Manager, State, Window};
 // }
 
 #[tauri::command]
-fn load(state: State<'_, Mutex<AppState>>) {
-    let output = std::process::Command::new("powershell")
-        .arg("[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json")
-        .output()
-        .expect("failed to execute process");
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let data: HashMap<String, String> =
-        serde_json::from_str(&stdout).expect("Failed to deserialize JSON");
-
-    let mut _state = state.lock().unwrap();
-    _state.env.clear();
-    _state.env.extend(
-        data.into_iter()
-            .map(|(k, v)| (k, v.split(";").map(|s| s.to_string()).collect())),
-    );
+async fn load(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
+    let result = state.lock().unwrap().init().unwrap();
+    Ok(result)
 }
 
 #[tauri::command]
-fn get_state(state: State<'_, Mutex<AppState>>) -> AppState {
-    state.lock().unwrap().clone()
+async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
+    dbg!("flushing...");
+    state.lock().unwrap().flush().unwrap();
+    let result = state.lock().unwrap().reload().unwrap();
+    dbg!("flush END");
+    Ok(result)
 }
 
 #[tauri::command]
-fn add_task(
-    state: State<'_, Mutex<AppState>>,
-    task_type: &str,
-    variable: &str,
-    value1: Option<&str>,
-    value2: Option<&str>,
-) -> String {
-    let mut _state = state.lock().unwrap();
-    match task_type {
-        "addvalue" => {
-            let value1 = value1.expect("addvalue task require value");
-            let task = AddValue::new(variable, value1);
-            _state.task_queue.add_task(task.into());
-            format!("Task added: addvalue {} {}", variable, value1)
-        }
-        "modvalue" => {
-            let value1 = value1.expect("modvalue task require old value");
-            let value2 = value2.expect("modvalue task require new value");
-            let task = ModifyValue::new(variable, value1, value2);
-            _state.task_queue.add_task(task.into());
-            format!("Task added: modvalue {} {} {}", variable, value1, value2)
-        }
-        "delvalue" => {
-            let value1 = value1.expect("delvalue task require value");
-            let task = DeleteValue::new(variable, value1);
-            _state.task_queue.add_task(task.into());
-            format!("Task added: delvalue {} {}", variable, value1)
-        }
-        _ => format!("Task type {} not supported", task_type),
+fn get_old_state(state: State<'_, Mutex<AppState>>) -> EnvHashMap {
+    let state_guard = state.lock().unwrap();
+    state_guard.take_snapshot(false).clone()
+}
+
+#[tauri::command]
+fn get_new_state(state: State<'_, Mutex<AppState>>) -> EnvHashMap {
+    let state_guard = state.lock().unwrap();
+    state_guard.take_snapshot(true).clone()
+}
+
+#[tauri::command]
+fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
+    let mut state_guard = state.lock().unwrap();
+    if let Some(values) = values {
+        state_guard.new_env.insert(variable.to_string(), values);
+    } else {
+        state_guard.new_env.remove(variable);
     }
+    dbg!(variable, &state_guard.new_env[variable]);
+    Ok(())
 }
 
-#[tauri::command]
-fn flush(ctx: Context, window: Window, state: State<AppState>, name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+
 
 // [Environment]::SetEnvironmentVariable($Name, $Value, [EnvironmentVariableTarget]::User)
 // #[tauri::command]
@@ -94,25 +75,6 @@ fn flush(ctx: Context, window: Window, state: State<AppState>, name: &str) -> St
 //         .collect::<Vec<String>>()
 // }
 
-// #[tauri::command]
-// /// in case debugging accidentally set the value to empty
-// fn get_one(var: &str) -> Vec<String> {
-//     let output = std::process::Command::new("powershell")
-//         .arg(format!(
-//             "[Environment]::GetEnvironmentVariables(\"{}\", [EnvironmentVariableTarget]::User)",
-//             var
-//         ))
-//         .output()
-//         .expect("failed to execute process");
-//     let stdout = String::from_utf8(output.stdout).unwrap();
-//     stdout
-//         .trim_matches('"')
-//         .split(";")
-//         .filter(|s| !s.is_empty())
-//         .map(|s| s.to_string())
-//         .collect::<Vec<String>>()
-// }
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -121,7 +83,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![load, get_state, add_task])
+        .invoke_handler(tauri::generate_handler![load, flush, get_new_state, get_old_state, sync_state])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

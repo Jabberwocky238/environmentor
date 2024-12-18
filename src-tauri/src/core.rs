@@ -1,168 +1,124 @@
 use serde::{Deserialize, Serialize};
-use tauri::ipc::IpcResponse;
 use std::collections::HashMap;
+use std::process::Command;
 
-macro_rules! declare_task {
-    ($name:ident, $($param:ident), *) => {
-        #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
-        pub struct $name {
-            $(
-                $param: String,
-            )*
-        }
-
-        impl $name {
-            pub fn new($($param: &str), *) -> Self {
-                $name {
-                    $(
-                        $param: $param.to_string(),
-                    )*
-                }
-            }
-        }
-
-        impl Into<Task> for $name {
-            fn into(self) -> Task {
-                Task::$name(self)
-            }
-        }
-    };
-}
-
-declare_task!(AddValue, variable, value);
-declare_task!(ModifyValue, variable, old_value, new_value);
-declare_task!(DeleteValue, variable, value);
-
-#[derive(Deserialize, PartialEq, Eq, Hash, Clone)]
-pub enum Task {
-    AddValue(AddValue),
-    ModifyValue(ModifyValue),
-    DeleteValue(DeleteValue),
-    // AddVariable,
-    // ModifyVariable,
-    // DeleteVariable,
-}
-
-impl Serialize for Task {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Task::AddValue(task) => task.serialize(serializer),
-            Task::ModifyValue(task) => task.serialize(serializer),
-            Task::DeleteValue(task) => task.serialize(serializer),
-        }
-    }
-}
-
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct TaskQueue {
-    tasks: Vec<Task>,
-}
-
-impl<TaskQueue> IpcResponse for TaskQueue {
-    fn body(self) -> tauri::Result<tauri::ipc::InvokeResponseBody> {
-        let json = serde_json::to_value(self).unwrap();
-        Ok(tauri::ipc::InvokeResponseBody::Json(json))
-    }
-}
-
-impl TaskQueue {
-    pub fn new() -> Self {
-        TaskQueue { tasks: Vec::new() }
-    }
-
-    pub fn add_task(&mut self, task: Task) {
-        self.tasks.push(task);
-    }
-
-    pub fn optimise(&mut self) {
-        // 向前合并
-        let mut _tasks = vec![];
-
-        while let Some(wrapped_task) = self.tasks.drain(..).next() {
-            match wrapped_task.clone() {
-                Task::AddValue(task) => {
-                    // 向前寻找是否已经添加过值
-                    _tasks.retain(|t| match t {
-                        Task::AddValue(__t) => {
-                            if __t.variable == task.variable && __t.value == task.value {
-                                false
-                            } else {
-                                true
-                            }
-                        }
-                        _ => true,
-                    });
-                    _tasks.push(wrapped_task);
-                }
-                Task::ModifyValue(task) => {
-                    // 向前寻找add和modify操作
-                    let mut flag = false;
-                    _tasks.iter_mut().for_each(|v| match v {
-                        Task::AddValue(__t) => {
-                            if __t.variable == task.variable && __t.value == task.old_value {
-                                __t.value = task.new_value.clone();
-                                flag = true;
-                            }
-                        }
-                        Task::ModifyValue(__t) => {
-                            if __t.variable == task.variable && __t.new_value == task.old_value {
-                                __t.new_value = task.new_value.clone();
-                                flag = true;
-                            }
-                        }
-                        _ => {}
-                    });
-
-                    if !flag {
-                        _tasks.push(wrapped_task);
-                    }
-                }
-                Task::DeleteValue(task) => {
-                    // 寻找全部add和modify操作，并消除
-                    let mut flag = false;
-                    _tasks.retain(|t| match t {
-                        Task::AddValue(__t) => {
-                            if __t.variable == task.variable && __t.value == task.value {
-                                flag = true;
-                                false
-                            } else {
-                                true
-                            }
-                        }
-                        Task::ModifyValue(__t) => {
-                            if __t.variable == task.variable && __t.new_value == task.value {
-                                flag = true;
-                                false
-                            } else {
-                                true
-                            }
-                        }
-                        _ => true,
-                    });
-
-                    if !flag {
-                        _tasks.push(wrapped_task);
-                    }
-                }
-            }
-        }
-
-        self.tasks = _tasks;
-    }
-
-    pub fn execute(&mut self) {
-        self.tasks.clear();
-    }
-}
-type EnvHashMap = HashMap<String, Vec<String>>;
+pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppState {
     pub old_env: EnvHashMap,
     pub new_env: EnvHashMap,
-    pub task_queue: TaskQueue,
+}
+
+impl AppState {
+    pub fn init(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
+        let data = get_environment_variables();
+        self.old_env.extend(data.clone());
+        self.new_env.extend(data.clone());
+        Ok(self._encode_base64(true))
+    }
+    pub fn reload(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
+        let data = get_environment_variables();
+        self.old_env.clear();
+        self.old_env.extend(data);
+        Ok(self._encode_base64(false))
+    }
+    pub fn take_snapshot(&self, new: bool) -> EnvHashMap {
+        self._encode_base64(new)
+    }
+
+    pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let resolver = UpdateResolver::new(self.old_env.clone(), self.new_env.clone());
+        resolver.resolve();
+        Ok(())
+    }
+
+    fn _encode_base64(&self, new: bool) -> EnvHashMap {
+        let map = if new {
+            self.new_env.clone()
+        } else {
+            self.old_env.clone()
+        };
+        map.into_iter()
+            .map(|(k, v)| {
+                (k, v)
+            })
+            .collect()
+    }
+}
+
+struct UpdateResolver {
+    old_env: EnvHashMap,
+    new_env: EnvHashMap,
+}
+
+impl UpdateResolver {
+    pub fn new(old_env: EnvHashMap, new_env: EnvHashMap) -> Self {
+        Self { old_env, new_env }
+    }
+    pub fn resolve(&self) {
+        self._resolve();
+    }
+    fn _resolve(&self) {
+        let tasks = self._create_tasks();
+        Command::new("powershell")
+            .arg(tasks.join(";"))
+            .output()
+            .expect("failed to execute process");
+    }
+
+    fn _filter(&self) -> (EnvHashMap, Vec<String>) {
+        let mut updates = EnvHashMap::new();
+        let mut deletes = vec![];
+
+        for (k, v) in self.new_env.iter() {
+            if self.old_env.get(k) != Some(v) {
+                updates.insert(k.clone(), v.clone());
+            }
+        }
+        for (k, _) in self.old_env.iter() {
+            if self.new_env.get(k).is_none() {
+                deletes.push(k.clone());
+            }
+        }
+        (updates, deletes)
+    }
+
+    fn _create_tasks(&self) -> Vec<String> {
+        let (updates, deletes) = self._filter();
+        let mut tasks = vec![];
+        for (k, v) in updates.iter() {
+            println!("update '{}': '{:?}'", k, v);
+            tasks.push(format!(
+                "[Environment]::SetEnvironmentVariable(\"{}\", \"{}\", [EnvironmentVariableTarget]::User)",
+                k,
+                v.join(";")
+            ));
+        }
+        for k in deletes.iter() {
+            println!("delete '{}'", k);
+            tasks.push(format!(
+                "[Environment]::SetEnvironmentVariable(\"{}\", $null, [EnvironmentVariableTarget]::User)",
+                k
+            ));
+        }
+        tasks
+    }
+}
+
+fn get_environment_variables() -> EnvHashMap {
+    let output = Command::new("powershell")
+    .arg("[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json")
+    .output()
+    .expect("failed to execute process");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let data: HashMap<String, String> =
+        serde_json::from_str(&stdout).expect("Failed to deserialize JSON");
+
+    let mut env = HashMap::new();
+    env.extend(
+        data.into_iter()
+            .map(|(k, v)| (k, v.split(";").map(|s| s.to_string()).collect())),
+    );
+    env
 }
