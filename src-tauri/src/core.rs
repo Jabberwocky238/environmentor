@@ -4,8 +4,6 @@ use std::os::windows::process::CommandExt as _;
 use std::process::Command;
 use std::u8;
 
-// let decoded_bytes = decode_config(&base64_string, STANDARD)?;
-
 pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -19,16 +17,13 @@ impl AppState {
         let data = get_environment_variables();
         self.old_env.extend(data.clone());
         self.new_env.extend(data.clone());
-        Ok(self._encode_base64(true))
+        Ok(data)
     }
     pub fn reload(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
         let data = get_environment_variables();
         self.old_env.clear();
-        self.old_env.extend(data);
-        Ok(self._encode_base64(false))
-    }
-    pub fn take_snapshot(&self, new: bool) -> EnvHashMap {
-        self._encode_base64(new)
+        self.old_env.extend(data.clone());
+        Ok(data)
     }
 
     pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -36,17 +31,9 @@ impl AppState {
         resolver.resolve();
         Ok(())
     }
-
-    fn _encode_base64(&self, new: bool) -> EnvHashMap {
-        let map = if new {
-            self.new_env.clone()
-        } else {
-            self.old_env.clone()
-        };
-        map
-    }
 }
 
+// 处理环境变量更新操作
 struct UpdateResolver {
     old_env: EnvHashMap,
     new_env: EnvHashMap,
@@ -68,6 +55,7 @@ impl UpdateResolver {
             .expect("failed to execute process");
     }
 
+    // 过滤出需要更新和删除的环境变量
     fn _filter(&self) -> (EnvHashMap, Vec<String>) {
         let mut updates = EnvHashMap::new();
         let mut deletes = vec![];
@@ -85,6 +73,7 @@ impl UpdateResolver {
         (updates, deletes)
     }
 
+    // 生成更新环境变量的任务字符串
     fn _create_tasks(&self) -> Vec<String> {
         let (updates, deletes) = self._filter();
         let mut tasks = vec![];
@@ -107,10 +96,9 @@ impl UpdateResolver {
     }
 }
 
-// forces powershell to output UTF-8, or else it will output UTF-16, stdout will be garbled
+// forces powershell to output UTF-8, or else it will output UTF-16, stdout cannot be decoded
 const FORCE_UTF8: &str = r#"[console]::OutputEncoding = [System.Text.Encoding]::UTF8"#;
-const GET_ENV: &str =
-    r#"[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json"#;
+const GET_ENV: &str = "[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json";
 
 fn get_environment_variables() -> EnvHashMap {
     let output = Command::new("powershell")

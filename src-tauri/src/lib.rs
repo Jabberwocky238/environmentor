@@ -26,18 +26,6 @@ async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
 }
 
 #[tauri::command]
-fn get_old_state(state: State<'_, Mutex<AppState>>) -> EnvHashMap {
-    let state_guard = state.lock().unwrap();
-    state_guard.take_snapshot(false).clone()
-}
-
-#[tauri::command]
-fn get_new_state(state: State<'_, Mutex<AppState>>) -> EnvHashMap {
-    let state_guard = state.lock().unwrap();
-    state_guard.take_snapshot(true).clone()
-}
-
-#[tauri::command]
 fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
     let mut state_guard = state.lock().unwrap();
     if let Some(values) = values {
@@ -50,31 +38,6 @@ fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<
 }
 
 
-
-// [Environment]::SetEnvironmentVariable($Name, $Value, [EnvironmentVariableTarget]::User)
-// #[tauri::command]
-// fn set_one(var: &str, value: &str) -> Vec<String> {
-//     // cmd
-//     let output = std::process::Command::new("powershell")
-//         .arg(format!("[Environment]::SetEnvironmentVariable(\"{}\", \"{}\", [EnvironmentVariableTarget]::User)", var, value))
-//         .output()
-//         .expect("failed to execute process");
-//     let output = std::process::Command::new("powershell")
-//         .arg(format!(
-//             "[Environment]::GetEnvironmentVariables(\"{}\", [EnvironmentVariableTarget]::User)",
-//             var
-//         ))
-//         .output()
-//         .expect("failed to execute process");
-//     let stdout = String::from_utf8(output.stdout).unwrap();
-//     stdout
-//         .trim_matches('"')
-//         .split(";")
-//         .filter(|s| !s.is_empty())
-//         .map(|s| s.to_string())
-//         .collect::<Vec<String>>()
-// }
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -83,7 +46,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![load, flush, get_new_state, get_old_state, sync_state])
+        .invoke_handler(tauri::generate_handler![load, flush, sync_state])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
