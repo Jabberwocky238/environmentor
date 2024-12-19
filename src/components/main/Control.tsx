@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { emitter, useEnv, SyncState } from "@/core";
+import { useEnv } from "@/core";
 import { useStore } from "./store";
 
 export default function Control() {
-    const [stateSync, setStateSync] = useState<SyncState>("SYNCED");
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
     const env = useEnv();
     const store = useStore();
@@ -17,8 +16,11 @@ export default function Control() {
         env.setSyncState('SYNCED');
     }
 
+    const btnRefresh = () => {
+        window.location.reload();
+    }
+
     useEffect(() => {
-        setStateSync(env.syncState);
         switch (env.syncState) {
             case 'SYNCED':
                 setStateDom(<StateClean />);
@@ -42,6 +44,7 @@ export default function Control() {
                 当前应用状态：{stateDom}
                 <button onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
+                <button onClick={btnRefresh}>Refresh</button>
             </div>
         </>
     )

@@ -9,7 +9,7 @@ export default function EnvList() {
 
     const env = useEnv();
     const store = useStore();
-    const { addValue, modifyValue, deleteValue } = env;
+    const { addValue, modifyValue, deleteValue, orderValue } = env;
     const { setAddingValue } = store;
 
     useEffect(() => {
@@ -36,6 +36,16 @@ export default function EnvList() {
 
                         <div className="value-item-editing"
                             style={{ display: i === curEditValIndex ? "flex" : "none" }}>
+                            <button onClick={() => {
+                                const newList = orderValue(store.curVar, i, "up");
+                                setValueList(newList);
+                                setEditValIndex(curEditValIndex - 1);
+                            }}>↑</button>
+                            <button onClick={() => {
+                                const newList = orderValue(store.curVar, i, "down");
+                                setValueList(newList);
+                                setEditValIndex(curEditValIndex + 1);
+                            }}>↓</button>
                             <input
                                 onChange={(e) => {
                                     setBuffer(e.currentTarget.value)
