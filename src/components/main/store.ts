@@ -2,16 +2,30 @@ import { create } from "zustand";
 
 interface IStore {
     curVar: string;
-    isAddingValue: boolean;
+    isAddValueOpen: boolean;
+    buffer: string;
+    curEditValIndex: number;
 
+    setEditValIndex: (index: number) => void;
     switchVariable: (variable: string) => void;
-    setAddingValue: (isAdding: boolean) => void;
+    setAddValueOpen: (isAdding: boolean) => void;
+    setBuffer: (buffer: string) => void;
 }
 
-export const useStore = create<IStore>((set) => ({
+export const useStore = create<IStore>((set, get) => ({
     curVar: "NOTHING",
-    isAddingValue: false,
+    isAddValueOpen: false,
+    buffer: "",
+    curEditValIndex: -1,
 
+    setEditValIndex: (index: number) => set({
+        curEditValIndex: index,
+        isAddValueOpen: false,
+    }),
     switchVariable: (variable: string) => set({ curVar: variable }),
-    setAddingValue: (isAdding: boolean) => set({ isAddingValue: isAdding }),
+    setAddValueOpen: (isAdding: boolean) => set({
+        curEditValIndex: -1,
+        isAddValueOpen: isAdding,
+    }),
+    setBuffer: (buffer: string) => set({ buffer }),
 }));

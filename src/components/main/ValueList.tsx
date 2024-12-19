@@ -4,19 +4,16 @@ import { useStore } from "./store";
 
 export default function EnvList() {
     const [valueList, setValueList] = useState<string[]>([]);
-    const [buffer, setBuffer] = useState<string>("");
-    const [curEditValIndex, setEditValIndex] = useState<number>(-1);
 
     const env = useEnv();
     const store = useStore();
     const { addValue, modifyValue, deleteValue, orderValue } = env;
-    const { setAddingValue } = store;
+    const { setAddValueOpen, setBuffer, setEditValIndex } = store;
 
     useEffect(() => {
         setEditValIndex(-1);
-        setAddingValue(false);
+        setAddValueOpen(false);
         setBuffer("");
-
         setValueList(env.envs[store.curVar] || []);
     }, [store.curVar]);
 
@@ -27,38 +24,39 @@ export default function EnvList() {
                 {valueList.map((v, i) => (
                     <>
                         <div className="value-item"
-                            style={{ display: i === curEditValIndex ? "none" : "block" }}
+                            style={{ display: i === store.curEditValIndex ? "none" : "block" }}
                             onClick={() => {
                                 setEditValIndex(i);
-                                console.log(valueList, v)
                                 setBuffer(v);
                             }}>{v}</div>
 
                         <div className="value-item-editing"
-                            style={{ display: i === curEditValIndex ? "flex" : "none" }}>
+                            style={{ display: i === store.curEditValIndex ? "flex" : "none" }}>
                             <button onClick={() => {
                                 const newList = orderValue(store.curVar, i, "up");
                                 setValueList(newList);
-                                setEditValIndex(curEditValIndex - 1);
+                                setEditValIndex(store.curEditValIndex - 1);
                             }}>↑</button>
+
                             <button onClick={() => {
                                 const newList = orderValue(store.curVar, i, "down");
                                 setValueList(newList);
-                                setEditValIndex(curEditValIndex + 1);
+                                setEditValIndex(store.curEditValIndex + 1);
                             }}>↓</button>
+
                             <input
-                                onChange={(e) => {
-                                    setBuffer(e.currentTarget.value)
-                                }}
+                                onChange={(e) => setBuffer(e.currentTarget.value)}
                                 placeholder="Enter value"
-                                value={buffer}
+                                value={store.buffer}
                             />
+
                             <button onClick={() => {
-                                const newList = modifyValue(store.curVar, i, buffer);
+                                const newList = modifyValue(store.curVar, i, store.buffer);
                                 setValueList(newList);
                                 setEditValIndex(-1);
                                 setBuffer("");
                             }}>Conform</button>
+
                             <button onClick={() => {
                                 const newList = deleteValue(store.curVar, i);
                                 setValueList(newList);
@@ -70,16 +68,16 @@ export default function EnvList() {
                 ))}
 
                 <div className="value-item-editing"
-                    style={{ display: store.isAddingValue ? "flex" : "none" }}>
+                    style={{ display: store.isAddValueOpen ? "flex" : "none" }}>
                     <input
                         onChange={(e) => setBuffer(e.currentTarget.value)}
                         placeholder="Enter value"
-                        value={buffer}
+                        value={store.buffer}
                     />
                     <button onClick={() => {
-                        const newList = addValue(store.curVar, buffer);
+                        const newList = addValue(store.curVar, store.buffer);
                         setValueList(newList);
-                        setAddingValue(false);
+                        setAddValueOpen(false);
                         setBuffer("");
                     }}>+</button>
                 </div>

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::os::windows::process::CommandExt as _;
 use std::process::Command;
 use std::u8;
 
@@ -62,6 +63,7 @@ impl UpdateResolver {
         let tasks = self._create_tasks();
         Command::new("powershell")
             .arg(tasks.join(";"))
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
             .output()
             .expect("failed to execute process");
     }
@@ -107,11 +109,13 @@ impl UpdateResolver {
 
 // forces powershell to output UTF-8, or else it will output UTF-16, stdout will be garbled
 const FORCE_UTF8: &str = r#"[console]::OutputEncoding = [System.Text.Encoding]::UTF8"#;
-const GET_ENV: &str = r#"[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json"#;
+const GET_ENV: &str =
+    r#"[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json"#;
 
 fn get_environment_variables() -> EnvHashMap {
     let output = Command::new("powershell")
         .arg([FORCE_UTF8, GET_ENV].join(";"))
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .output()
         .expect("failed to execute process");
     let stdout = String::from_utf8(output.stdout).expect("Failed to decode UTF-8");
@@ -120,9 +124,13 @@ fn get_environment_variables() -> EnvHashMap {
         serde_json::from_str(&stdout).expect("Failed to deserialize JSON");
 
     let mut env = HashMap::new();
-    env.extend(
-        data.into_iter()
-            .map(|(k, v)| (k, v.split(";").map(|s| s.to_string()).collect())),
-    );
+    env.extend(data.into_iter().map(|(k, v)| {
+        let v = v
+            .split(";")
+            .map(|s| s.to_string())
+            .filter(|x| if x.trim().is_empty() { false } else { true })
+            .collect();
+        return (k, v);
+    }));
     env
 }

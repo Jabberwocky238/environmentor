@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEnv } from "@/core";
 import { useStore } from "./store";
 
 export default function Control() {
+    const refAdd = useRef<HTMLButtonElement>(null);
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
     const env = useEnv();
     const store = useStore();
 
     const btnAdd = () => {
-        store.setAddingValue(true);
+        store.setAddValueOpen(true);
     }
 
     const btnFlush = async () => {
@@ -35,14 +36,14 @@ export default function Control() {
                 setStateDom(<StateERROR />);
                 break;
         }
-        
+
     }, [env.syncState]);
 
     return (
         <>
             <div>
                 当前应用状态：{stateDom}
-                <button onClick={btnAdd}>Add</button>
+                <button ref={refAdd} onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>
             </div>

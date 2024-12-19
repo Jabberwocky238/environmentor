@@ -1,8 +1,7 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { useEffect, useState } from "react";
 import { useStore } from "./store";
 import { emitter, useEnv } from "@/core";
+import Modal from '@@/utils/Modal';
 
 export default function EnvList() {
     const [envKeys, setEnvKeys] = useState<string[]>([]);
@@ -16,10 +15,12 @@ export default function EnvList() {
 
     useEffect(() => {
         setEnvKeys(Object.keys(env.envs).sort());
+        switchVariable(envKeys[0]);
     }, [env.envs]);
 
     emitter.on("envChange", () => {
         setEnvKeys(Object.keys(env.envs).sort());
+        switchVariable(envKeys[0]);
     });
 
     return (
@@ -50,32 +51,3 @@ export default function EnvList() {
         </>
     )
 }
-
-interface ModalProps {
-    title?: string;
-    isOpen: boolean;
-    onClose: () => void;
-    children: React.ReactNode;
-}
-
-function Modal(props: ModalProps) {
-    const { title, isOpen, onClose, children } = props;
-
-    if (!isOpen) return null;
-
-    return ReactDOM.createPortal(
-        <div className="modal">
-            <div className="modal-overlay" onClick={onClose} />
-            <div className="modal-content">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: 'center', marginBottom: "10px" }}>
-                    <strong className='modal-title'>{title}</strong>
-                    <button onClick={onClose}>
-                        &times; 
-                    </button>
-                </div>
-                {children}
-            </div>
-        </div>,
-        document.body
-    );
-};

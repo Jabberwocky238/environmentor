@@ -121,12 +121,12 @@ async function load(): Promise<EnvHashMap> {
 async function flush(): Promise<void> {
     return invoke("flush");
 }
-async function get_new_state(): Promise<EnvHashMap> {
-    return invoke("get_new_state");
-}
-async function get_old_state(): Promise<EnvHashMap> {
-    return invoke("get_old_state");
-}
+// async function get_new_state(): Promise<EnvHashMap> {
+//     return invoke("get_new_state");
+// }
+// async function get_old_state(): Promise<EnvHashMap> {
+//     return invoke("get_old_state");
+// }
 async function sync_state_to_backend(variable: string, values?: string[]): Promise<void> {
     return invoke("sync_state", { variable, values })
 }
