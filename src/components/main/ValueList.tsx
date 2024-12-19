@@ -51,6 +51,12 @@ export default function EnvList() {
                             />
 
                             <button onClick={() => {
+                                // 如果没有任何变化，就直接退出编辑状态
+                                if (store.buffer === valueList[i]) {
+                                    setEditValIndex(-1);
+                                    setBuffer("");
+                                    return;
+                                }
                                 const newList = modifyValue(store.curVar, i, store.buffer);
                                 setValueList(newList);
                                 setEditValIndex(-1);

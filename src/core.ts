@@ -32,10 +32,8 @@ export const useEnv = create<IStore>((set, get) => ({
         set({ envs: old_state });
     },
     flush: async () => {
-        emitter.emit("envChange");
         set({ syncState: "SYNCING" });
         await flush();
-        emitter.emit("envChange");
         set({ syncState: "SYNCED" });
     },
 
@@ -70,7 +68,6 @@ export const useEnv = create<IStore>((set, get) => ({
             sync_state_to_backend(variable, state.envs[variable]);
             return state;
         });
-        emitter.emit("envChange");
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
@@ -81,7 +78,6 @@ export const useEnv = create<IStore>((set, get) => ({
             sync_state_to_backend(variable, state.envs[variable]);
             return state;
         });
-        emitter.emit("envChange");
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
@@ -92,7 +88,6 @@ export const useEnv = create<IStore>((set, get) => ({
             sync_state_to_backend(variable, state.envs[variable]);
             return state;
         });
-        emitter.emit("envChange");
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
@@ -109,7 +104,6 @@ export const useEnv = create<IStore>((set, get) => ({
             sync_state_to_backend(variable, state.envs[variable]);
             return state;
         });
-        emitter.emit("envChange");
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     }

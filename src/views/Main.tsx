@@ -5,7 +5,8 @@ import EnvList from "@@/main/EnvList";
 import ValueList from "@@/main/ValueList";
 import Control from "@@/main/Control";
 
-export default function Main() {
+export default function Main(props: {style: React.CSSProperties}) {
+    const { style } = props;
     const store = useEnv();
 
     useEffect(() => {
@@ -13,7 +14,7 @@ export default function Main() {
     }, []);
 
     return (
-        <div className="row">
+        <div style={style} className="row">
             <div className="var-col">
                 <EnvList></EnvList>
             </div>

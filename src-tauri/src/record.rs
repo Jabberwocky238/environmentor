@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, HashSet}, time};
 
-use serde::{de::value, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 macro_rules! declare_task_log_data {
     ($name:ident, [ $( $item:ident: $ty:ident, )* ]) => {
@@ -46,7 +46,9 @@ declare_task_log_data!(DeleteVariableLogData, [
 
 declare_task_log_data!(FlushLogData, []);
 declare_task_log_data!(InitLogData, []);
+
 // ========================
+
 #[derive(Serialize, Deserialize, Clone)]
 enum TaskLogData {
     Init(InitLogData),
@@ -72,10 +74,6 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn new() -> Self {
-        Self { tasks: Vec::new() }
-    }
-
     pub fn add_task(&mut self, task: TaskLog) {
         self.tasks.push(task);
     }
@@ -156,7 +154,7 @@ impl TaskBuilder {
                 if diff_indice.len() == 0 {
                     panic!("unknown task, judge if OrderValueLogData, diff_indice.len() == 0");
                 }
-                // we can never know which one is the new one, so I call this action OrderValueLogData as a type of SWITCH
+                // we can never know it goes up or down, but we can treat OrderValueLogData as a SWITCH operation
                 return TaskLog {
                     timestamp: now(),
                     data: TaskLogData::OrderValue(OrderValueLogData {

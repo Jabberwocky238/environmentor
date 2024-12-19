@@ -1,5 +1,6 @@
 .row {
     height: 100%;
+    width: 100%;
     display: flex;
     justify-content: center;
     background-color: #1e1e1e;
@@ -50,6 +51,8 @@
         flex-direction: column;
 
         .value-list {
+            position: relative;
+
             overflow: scroll;
             flex-grow: 1; // fill the space if items are less than the height
 

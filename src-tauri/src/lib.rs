@@ -37,7 +37,7 @@ fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<
 
 #[tauri::command]
 fn task_list(state: State<'_, Mutex<AppState>>) -> tauri::Result<Vec<TaskLog>> {
-    let mut state_guard = state.lock().unwrap();
+    let state_guard = state.lock().unwrap();
     Ok(state_guard.task_list())
 }
 

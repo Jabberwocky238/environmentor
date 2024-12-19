@@ -46,14 +46,14 @@ impl AppState {
     }
 
     pub fn sync_state(&mut self, variable: &str, values: Option<Vec<String>>) {
-        if let Some(values) = values.clone() {
+        let task = TaskBuilder::make(&self.new_env, variable, values.clone());
+        self.recorder.add_task(task);
+
+        if let Some(values) = values {
             self.new_env.insert(variable.to_string(), values);
         } else {
             self.new_env.remove(variable);
         }
-
-        let task = TaskBuilder::make(&self.new_env, variable, values);
-        self.recorder.add_task(task);
     }
 
     pub fn task_list(&self) -> Vec<TaskLog> {
