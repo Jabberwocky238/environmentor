@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Command;
+use std::u8;
+
+// let decoded_bytes = decode_config(&base64_string, STANDARD)?;
 
 pub type EnvHashMap = HashMap<String, Vec<String>>;
 
@@ -39,11 +42,7 @@ impl AppState {
         } else {
             self.old_env.clone()
         };
-        map.into_iter()
-            .map(|(k, v)| {
-                (k, v)
-            })
-            .collect()
+        map
     }
 }
 
@@ -106,12 +105,17 @@ impl UpdateResolver {
     }
 }
 
+// forces powershell to output UTF-8, or else it will output UTF-16, stdout will be garbled
+const FORCE_UTF8: &str = r#"[console]::OutputEncoding = [System.Text.Encoding]::UTF8"#;
+const GET_ENV: &str = r#"[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json"#;
+
 fn get_environment_variables() -> EnvHashMap {
     let output = Command::new("powershell")
-    .arg("[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json")
-    .output()
-    .expect("failed to execute process");
-    let stdout = String::from_utf8(output.stdout).unwrap();
+        .arg([FORCE_UTF8, GET_ENV].join(";"))
+        .output()
+        .expect("failed to execute process");
+    let stdout = String::from_utf8(output.stdout).expect("Failed to decode UTF-8");
+
     let data: HashMap<String, String> =
         serde_json::from_str(&stdout).expect("Failed to deserialize JSON");
 

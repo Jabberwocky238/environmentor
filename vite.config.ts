@@ -29,4 +29,12 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  // 3. path
+  resolve: {
+    alias: {
+      "@": "/src",
+      "@@": "/src/components"
+    },
+  },
 }));
