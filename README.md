@@ -1,7 +1,16 @@
-# Tauri + React + Typescript
+# Environmentor
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+这是一个全局环境变量管理器。
 
-## Recommended IDE Setup
+只支持windows，用法跟原生的一模一样，只不过based on tauri
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+目前为了安全考虑只开放了用户环境变量的设定
+
+## debug
+
+```bash
+yarn 
+
+yarn tauri dev
+```
+
