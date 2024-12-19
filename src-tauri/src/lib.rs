@@ -1,8 +1,10 @@
 mod core;
+mod record;
 
 use core::AppState;
 use core::EnvHashMap;
 use std::sync::Mutex;
+use record::TaskLog;
 use tauri::{Context, Manager, State, Window};
 
 // #[tauri::command]
@@ -28,13 +30,15 @@ async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
 #[tauri::command]
 fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
     let mut state_guard = state.lock().unwrap();
-    if let Some(values) = values {
-        state_guard.new_env.insert(variable.to_string(), values);
-    } else {
-        state_guard.new_env.remove(variable);
-    }
+    state_guard.sync_state(variable, values);
     dbg!(variable, &state_guard.new_env[variable]);
     Ok(())
+}
+
+#[tauri::command]
+fn task_list(state: State<'_, Mutex<AppState>>) -> tauri::Result<Vec<TaskLog>> {
+    let mut state_guard = state.lock().unwrap();
+    Ok(state_guard.task_list())
 }
 
 
@@ -46,7 +50,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![load, flush, sync_state])
+        .invoke_handler(tauri::generate_handler![load, flush, sync_state, task_list])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

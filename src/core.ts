@@ -124,4 +124,6 @@ async function flush(): Promise<void> {
 async function sync_state_to_backend(variable: string, values?: string[]): Promise<void> {
     return invoke("sync_state", { variable, values })
 }
-
+export async function task_list(): Promise<any[]> {
+    return invoke("task_list")
+}

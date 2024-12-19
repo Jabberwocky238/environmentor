@@ -4,12 +4,17 @@ use std::os::windows::process::CommandExt as _;
 use std::process::Command;
 use std::u8;
 
+use crate::record::TaskLog;
+
+use super::record::{Recorder, TaskBuilder};
+
 pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppState {
     pub old_env: EnvHashMap,
     pub new_env: EnvHashMap,
+    pub recorder: Recorder,
 }
 
 impl AppState {
@@ -17,6 +22,10 @@ impl AppState {
         let data = get_environment_variables();
         self.old_env.extend(data.clone());
         self.new_env.extend(data.clone());
+
+        let task = TaskBuilder::action("init");
+        self.recorder.add_task(task);
+
         Ok(data)
     }
     pub fn reload(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
@@ -29,7 +38,26 @@ impl AppState {
     pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let resolver = UpdateResolver::new(self.old_env.clone(), self.new_env.clone());
         resolver.resolve();
+
+        let task = TaskBuilder::action("flush");
+        self.recorder.add_task(task);
+
         Ok(())
+    }
+
+    pub fn sync_state(&mut self, variable: &str, values: Option<Vec<String>>) {
+        if let Some(values) = values.clone() {
+            self.new_env.insert(variable.to_string(), values);
+        } else {
+            self.new_env.remove(variable);
+        }
+
+        let task = TaskBuilder::make(&self.new_env, variable, values);
+        self.recorder.add_task(task);
+    }
+
+    pub fn task_list(&self) -> Vec<TaskLog> {
+        self.recorder.tasks.clone()
     }
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useEnv } from "@/core";
+import { task_list, useEnv } from "@/core";
 import { useStore } from "./store";
 
 export default function Control() {
@@ -19,6 +19,12 @@ export default function Control() {
 
     const btnRefresh = () => {
         window.location.reload();
+    }
+
+    const btnDebug = () => {
+        task_list().then((res) => {
+            console.log(res);
+        });
     }
 
     useEffect(() => {
@@ -46,6 +52,7 @@ export default function Control() {
                 <button ref={refAdd} onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>
+                <button onClick={btnDebug}>Debug</button>
             </div>
         </>
     )
