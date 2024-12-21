@@ -4,7 +4,7 @@ import Modal from '@@/utils/Modal';
 import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { flush, send_state, receive_state } from "@/core";
-// import { open } from '@tauri-apps/plugin-dialog';
+import { open } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
 interface IStore {
@@ -317,11 +317,11 @@ function ValueList() {
         setBuffer("");
     }
 
-    // const btnFromFS = async () => {
-    //     const res = await open({ directory: true, multiple: false });
-    //     console.log(res);
-    //     setBuffer(res || "");
-    // }
+    const btnFromFS = async () => {
+        const res = await open({ directory: true, multiple: false });
+        console.log(res);
+        setBuffer(res || "");
+    }
 
     return (
         <>
@@ -347,7 +347,7 @@ function ValueList() {
                                 value={buffer}
                             />
                             <button onClick={btnModifyConform}>Conform</button>
-                            {/* <button onClick={btnFromFS}>FromFS</button> */}
+                            <button onClick={btnFromFS}>FromFS</button>
                             <button onClick={btnDelete}>Delete</button>
                         </div>
                     </>
