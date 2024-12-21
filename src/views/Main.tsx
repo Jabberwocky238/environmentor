@@ -3,7 +3,7 @@ import Modal from '@@/utils/Modal';
 
 import { create } from "zustand";
 import { useEffect, useState } from "react";
-import { flush, send_state, receive_state } from "@/core";
+import { flush as _flush, send_state, receive_state as _receive_state } from "@/core";
 import { open } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
@@ -42,12 +42,12 @@ interface IStore {
 const useStore = create<IStore>((set, get) => ({
     envs: {},
     load: async () => {
-        let envs: EnvHashMap = await receive_state();
+        let envs: EnvHashMap = await _receive_state();
         set((state) => ({ ...state, envs: envs }), true);
     },
     flush: async () => {
         set({ syncState: "SYNCING" });
-        await flush();
+        await _flush();
         set({ syncState: "SYNCED" });
     },
 
@@ -223,13 +223,13 @@ function EnvList() {
 
 function Control() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
-    const { syncState, setSyncState, setAddValueOpen } = useStore();
+    const { syncState, setSyncState, setAddValueOpen, flush } = useStore();
 
     const btnAdd = () => setAddValueOpen(true);
 
     const btnFlush = async () => {
         await flush();
-        setSyncState('SYNCED');
+        // setSyncState('SYNCED');
     }
 
     const btnRefresh = () => {
@@ -319,6 +319,7 @@ function ValueList() {
 
     const btnFromFS = async () => {
         const res = await open({ directory: true, multiple: false });
+        if (!res) return;
         console.log(res);
         setBuffer(res || "");
     }
