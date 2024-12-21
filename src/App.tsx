@@ -16,7 +16,7 @@ function App() {
     <>
       <div className="tab">
         {routes.map((r) => (
-          <Link className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
+          <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
         ))}
       </div>
       <div className="tab-content">

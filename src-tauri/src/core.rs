@@ -15,13 +15,17 @@ pub struct AppState {
     pub old_env: EnvHashMap,
     pub new_env: EnvHashMap,
     pub recorder: Recorder,
+    pub dirty: bool,
 }
 
 impl AppState {
     pub fn init(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
+        dbg!("init");
         let data = get_environment_variables();
         self.old_env.extend(data.clone());
         self.new_env.extend(data.clone());
+
+        self.dirty = false;
 
         let task = TaskBuilder::action("init");
         self.recorder.add_task(task);
@@ -39,6 +43,8 @@ impl AppState {
         let resolver = UpdateResolver::new(self.old_env.clone(), self.new_env.clone());
         resolver.resolve();
 
+        self.dirty = false;
+
         let task = TaskBuilder::action("flush");
         self.recorder.add_task(task);
 
@@ -46,6 +52,8 @@ impl AppState {
     }
 
     pub fn sync_state(&mut self, variable: &str, values: Option<Vec<String>>) {
+        self.dirty = true;
+
         let task = TaskBuilder::make(&self.new_env, variable, values.clone());
         self.recorder.add_task(task);
 

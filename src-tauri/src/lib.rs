@@ -5,22 +5,44 @@ use core::AppState;
 use core::EnvHashMap;
 use record::TaskLog;
 use std::sync::Mutex;
-use tauri::{Context, Manager, State, Window};
+use tauri::{AppHandle, Context, Manager, State, Window};
 
 // #[tauri::command]
 // fn greet(ctx: Context, window: Window, state: State<AppState>, name: &str) -> String {
 //     format!("Hello, {}! You've been greeted from Rust!", name)
 // }
 
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+struct SendState {
+    env: EnvHashMap,
+    dirty: bool,
+}
+
 #[tauri::command]
 async fn flush(
-    app_handle: tauri::AppHandle,
+    app_handle: AppHandle,
     state: State<'_, Mutex<AppState>>,
-) -> tauri::Result<EnvHashMap> {
+) -> tauri::Result<SendState> {
     dbg!("flushing...");
     state.lock().unwrap().flush().unwrap();
-    let result = state.lock().unwrap().reload().unwrap();
+    let mut state_guard = state.lock().unwrap();
+
+    let env = state_guard.reload().unwrap();
+    let dirty = state_guard.dirty;
     dbg!("flush END");
+    let result = SendState { env, dirty };
+    Ok(result)
+}
+
+#[tauri::command]
+fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
+    dbg!("send_state");
+    let state_guard = state.lock().unwrap();
+
+    let env = state_guard.new_env.clone();
+    let dirty = state_guard.dirty;
+
+    let result = SendState { env, dirty };
     Ok(result)
 }
 
@@ -34,12 +56,6 @@ fn receive_state(
     state_guard.sync_state(variable, values);
     dbg!(variable, &state_guard.new_env.get(variable));
     Ok(())
-}
-
-#[tauri::command]
-fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
-    let state_guard = state.lock().unwrap();
-    Ok(state_guard.new_env.clone())
 }
 
 #[tauri::command]
