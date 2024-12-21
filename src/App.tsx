@@ -1,28 +1,40 @@
 
-import Tab from "@@/Tab";
 import Main from "@/views/Main";
 import Record from "@/views/Record";
 
 import "./App.css";
 import "./App.scss";
 import "./custom.scss";
-import { useState } from "react";
-
+import { Link, Route, Switch } from "wouter";
 
 function App() {
-  const options = ["Main", "History"];
-  const [selected, setSelected] = useState(options[0]);
+  const routes = [
+    { href: "/", title: 'Main' },
+    { href: "/history", title: 'History' }
+  ]
 
   return (
-    <main className="container">
-      <Tab options={options} selected={selected} setSelected={(_selected) => {
-        setSelected(_selected);
-      }} ></Tab>
-      <div className="tab-content">
-        <Main style={{ display: selected === "Main" ? "flex" : 'none' }}></Main>
-        <Record style={{ display: selected === "History" ? "flex" : 'none' }}></Record>
+    <>
+      <div className="tab">
+        {routes.map((r) => (
+          <Link className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
+        ))}
       </div>
-    </main>
+      <div className="tab-content">
+        <Switch>
+          <Route path="/">
+            <Main></Main>
+          </Route>
+          <Route path="/history">
+            <Record></Record>
+          </Route>
+          {/* Default route in a switch */}
+          <Route>
+            <h1>404: No such page!</h1>
+          </Route>
+        </Switch>
+      </div>
+    </>
   );
 }
 

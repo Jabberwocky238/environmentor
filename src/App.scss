@@ -1,11 +1,9 @@
 .tab {
     display: flex;
     justify-content: center;
-    align-items: space-between;
-    
     height: 6%;
 
-    .tab-item {
+    a {
         box-sizing: border-box;
         padding: 10px;
         cursor: pointer;
@@ -16,7 +14,7 @@
         text-align: center;
     }
     
-    .tab-item-active {
+    a.tab-item-active  {
         background-color: rgba(0, 0, 0, 0.5);
         border-bottom: 4px solid #b0a5e8;
     }

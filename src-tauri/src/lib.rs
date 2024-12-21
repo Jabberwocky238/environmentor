@@ -3,8 +3,8 @@ mod record;
 
 use core::AppState;
 use core::EnvHashMap;
-use std::sync::Mutex;
 use record::TaskLog;
+use std::sync::Mutex;
 use tauri::{Context, Manager, State, Window};
 
 // #[tauri::command]
@@ -13,13 +13,10 @@ use tauri::{Context, Manager, State, Window};
 // }
 
 #[tauri::command]
-async fn init(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
-    let result = state.lock().unwrap().init().unwrap();
-    Ok(result)
-}
-
-#[tauri::command]
-async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
+async fn flush(
+    app_handle: tauri::AppHandle,
+    state: State<'_, Mutex<AppState>>,
+) -> tauri::Result<EnvHashMap> {
     dbg!("flushing...");
     state.lock().unwrap().flush().unwrap();
     let result = state.lock().unwrap().reload().unwrap();
@@ -28,10 +25,14 @@ async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
 }
 
 #[tauri::command]
-fn receive_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
+fn receive_state(
+    state: State<'_, Mutex<AppState>>,
+    variable: &str,
+    values: Option<Vec<String>>,
+) -> tauri::Result<()> {
     let mut state_guard = state.lock().unwrap();
     state_guard.sync_state(variable, values);
-    dbg!(variable, &state_guard.new_env[variable]);
+    dbg!(variable, &state_guard.new_env.get(variable));
     Ok(())
 }
 
@@ -47,16 +48,22 @@ fn task_list(state: State<'_, Mutex<AppState>>) -> tauri::Result<Vec<TaskLog>> {
     Ok(state_guard.task_list())
 }
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            app.manage(Mutex::new(AppState::default()));
+            let mut app_state = AppState::default();
+            app_state.init()?;
+            app.manage(Mutex::new(app_state));
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![init, flush, send_state, receive_state, task_list])
+        .invoke_handler(tauri::generate_handler![
+            flush,
+            send_state,
+            receive_state,
+            task_list
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

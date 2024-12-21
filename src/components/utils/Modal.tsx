@@ -1,5 +1,7 @@
 import ReactDOM from "react-dom";
 
+import './modal.scss';
+
 interface ModalProps {
     title?: string;
     isOpen: boolean;

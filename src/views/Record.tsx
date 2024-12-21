@@ -2,7 +2,7 @@ const dataaa = [
     { ty: "1", name: "", age: "",}
 ]
 
-export default function Record(props: {style: React.CSSProperties}) {
+export default function Record(props: {style?: React.CSSProperties}) {
     const { style } = props;
 
     return (

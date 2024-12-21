@@ -5,20 +5,16 @@
     justify-content: center;
     background-color: #1e1e1e;
 
-    --var-col-width: 25%;
-    --main-col-width: 75%;
-    --task-col-width: 0%;
-
     --border-radius-general: 8px;
 
-    .var-col {
+    .col {
         height: inherit;
         padding: 12px;
-        width: var(--var-col-width);
+        width: var(--col-width);
         display: flex;
         flex-direction: column;
 
-        .var-list {
+        .list {
             overflow: scroll;
             flex-grow: 1; // fill the space if items are less than the height
 
@@ -40,28 +36,6 @@
                     border-color: #396cd8;
                 }
             }
-        }
-    }
-
-    .main-col {
-        height: inherit;
-        padding: 12px;
-        width: var(--main-col-width);
-        display: flex;
-        flex-direction: column;
-
-        .value-list {
-            position: relative;
-
-            overflow: scroll;
-            flex-grow: 1; // fill the space if items are less than the height
-
-            border-radius: var(--border-radius-general);
-            background-color: #363636;
-
-            &::-webkit-scrollbar {
-                width: 0;
-            }
 
             .value-item,
             .value-item-editing {
@@ -82,58 +56,5 @@
                 }
             }
         }
-    }
-
-}
-
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 100;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    .modal-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);;
-    }
-
-    .modal-content {
-        background-color: #363636;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 0.5rem 1rem rgba(255, 255, 255, 0.15);
-        max-width: 90%;
-        max-height: 90%;
-        position: relative;
-        z-index: 1;
-
-        .modal-title {
-            font-weight: bold;
-        }
-    }
-
-    .modal-close {
-        top: 8px;
-        right: 8px;
-        font-size: 2rem;
-        font-weight: bold;
-        color: #aaa;
-        background-color: transparent;
-        border: none;
-        cursor: pointer;
-    }
-
-    .modal-close:hover {
-        color: #000;
     }
 }
