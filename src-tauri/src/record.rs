@@ -34,7 +34,7 @@ enum TaskLogData {
     DeleteValue(DeleteValueLogData),
     UpdateValue(UpdateValueLogData),
     OrderValue(OrderValueLogData),
-    
+
     AddVariable(AddVariableLogData),
     DeleteVariable(DeleteVariableLogData),
 }

@@ -1,6 +1,5 @@
 
 import Main from "@/views/Main";
-import Record from "@/views/Record";
 
 import "./App.css";
 import "./App.scss";
@@ -10,7 +9,7 @@ import { Link, Route, Switch } from "wouter";
 function App() {
   const routes = [
     { href: "/", title: 'Main' },
-    { href: "/history", title: 'History' }
+    // { href: "/history", title: 'History' }
   ]
 
   return (
@@ -24,9 +23,6 @@ function App() {
         <Switch>
           <Route path="/">
             <Main></Main>
-          </Route>
-          <Route path="/history">
-            <Record></Record>
           </Route>
           {/* Default route in a switch */}
           <Route>

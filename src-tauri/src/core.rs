@@ -32,7 +32,7 @@ impl AppState {
         let data = get_environment_variables();
         self.old_env.clear();
         self.old_env.extend(data.clone());
-        Ok(data) 
+        Ok(data)
     }
 
     pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -126,7 +126,8 @@ impl UpdateResolver {
 
 // forces powershell to output UTF-8, or else it will output UTF-16, stdout cannot be decoded
 const FORCE_UTF8: &str = r#"[console]::OutputEncoding = [System.Text.Encoding]::UTF8"#;
-const GET_ENV: &str = "[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json";
+const GET_ENV: &str =
+    "[Environment]::GetEnvironmentVariables([EnvironmentVariableTarget]::User) | ConvertTo-Json";
 
 fn get_environment_variables() -> EnvHashMap {
     let output = Command::new("powershell")

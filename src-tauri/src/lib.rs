@@ -51,6 +51,7 @@ fn task_list(state: State<'_, Mutex<AppState>>) -> tauri::Result<Vec<TaskLog>> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let mut app_state = AppState::default();
             app_state.init()?;
