@@ -42,13 +42,13 @@ interface IStore {
 const useStore = create<IStore>((set, get) => ({
     envs: {},
     load: async () => {
-        let envs: EnvHashMap = await _receive_state();
-        set((state) => ({ ...state, envs: envs }), true);
+        let { env, dirty } = await _receive_state();
+        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED': 'SYNCED' }), true);
     },
     flush: async () => {
         set({ syncState: "SYNCING" });
-        await _flush();
-        set({ syncState: "SYNCED" });
+        let { env } = await _flush();
+        set({ syncState: "SYNCED", envs: env });
     },
 
     // syncState management
@@ -236,12 +236,6 @@ function Control() {
         window.location.reload();
     }
 
-    // const btnDebug = () => {
-    //     task_list().then((res) => {
-    //         console.log(res);
-    //     });
-    // }
-
     useEffect(() => {
         if (syncState === "SYNCED") {
             setStateDom(<StateClean />);
@@ -261,7 +255,6 @@ function Control() {
                 <button onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>
-                {/* <button onClick={btnDebug}>Debug</button> */}
                 <button onClick={() => { }}>Undo</button>
                 <button onClick={() => { }}>Redo</button>
             </div>
