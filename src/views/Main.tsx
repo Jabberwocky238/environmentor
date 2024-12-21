@@ -4,7 +4,7 @@ import Modal from '@@/utils/Modal';
 import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { flush as _flush, send_state, receive_state as _receive_state } from "@/core";
-import { open } from '@tauri-apps/plugin-dialog';
+import { open as _open } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
 interface IStore {
@@ -43,7 +43,7 @@ const useStore = create<IStore>((set, get) => ({
     envs: {},
     load: async () => {
         let { env, dirty } = await _receive_state();
-        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED': 'SYNCED' }), true);
+        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }), true);
     },
     flush: async () => {
         set({ syncState: "SYNCING" });
@@ -182,7 +182,7 @@ function EnvList() {
         console.log("[mount] EnvList")
         setEnvKeys(Object.keys(envs).sort());
         switchVariable(envKeys[0]);
-        
+
         return () => {
             console.log("[unmount] EnvList")
         }
@@ -223,14 +223,10 @@ function EnvList() {
 
 function Control() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
-    const { syncState, setSyncState, setAddValueOpen, flush } = useStore();
+    const { syncState, setAddValueOpen, flush } = useStore();
 
     const btnAdd = () => setAddValueOpen(true);
-
-    const btnFlush = async () => {
-        await flush();
-        // setSyncState('SYNCED');
-    }
+    const btnFlush = async () => await flush();
 
     const btnRefresh = () => {
         window.location.reload();
@@ -310,11 +306,11 @@ function ValueList() {
         setBuffer("");
     }
 
-    const btnFromFS = async () => {
-        const res = await open({ directory: true, multiple: false });
-        if (!res) return;
-        console.log(res);
-        setBuffer(res || "");
+    const btnFromFS = () => {
+        _open({ directory: true, multiple: false }).then((res) => {
+            if (!res) return;
+            setBuffer(res);
+        });
     }
 
     return (
