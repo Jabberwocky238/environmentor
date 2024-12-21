@@ -46,7 +46,7 @@ export const useEnv = create<IStore>((set, get) => ({
         const _variable = variable.trim().toUpperCase();
         set((state) => {
             state.envs[_variable] = [];
-            sync_state_to_backend(_variable, []);
+            send_state(_variable, []);
             return state;
         });
         emitter.emit("envChange");
@@ -55,7 +55,7 @@ export const useEnv = create<IStore>((set, get) => ({
     deleteVariable: (variable: string) => {
         set((state) => {
             delete state.envs[variable];
-            sync_state_to_backend(variable, undefined);
+            send_state(variable, undefined);
             return state;
         });
         emitter.emit("envChange");
@@ -65,7 +65,7 @@ export const useEnv = create<IStore>((set, get) => ({
     addValue: (variable: string, value: string) => {
         set((state) => {
             state.envs[variable].push(value);
-            sync_state_to_backend(variable, state.envs[variable]);
+            send_state(variable, state.envs[variable]);
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
@@ -75,7 +75,7 @@ export const useEnv = create<IStore>((set, get) => ({
     modifyValue: (variable: string, index: number, value: string) => {
         set((state) => {
             state.envs[variable][index] = value;
-            sync_state_to_backend(variable, state.envs[variable]);
+            send_state(variable, state.envs[variable]);
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
@@ -85,7 +85,7 @@ export const useEnv = create<IStore>((set, get) => ({
     deleteValue: (variable: string, index: number) => {
         set((state) => {
             state.envs[variable].splice(index, 1);
-            sync_state_to_backend(variable, state.envs[variable]);
+            send_state(variable, state.envs[variable]);
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
@@ -101,7 +101,7 @@ export const useEnv = create<IStore>((set, get) => ({
             } else {
                 state.envs[variable].splice(index + 1, 0, value);
             }
-            sync_state_to_backend(variable, state.envs[variable]);
+            send_state(variable, state.envs[variable]);
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
@@ -109,14 +109,17 @@ export const useEnv = create<IStore>((set, get) => ({
     }
 }));
 
-async function load(): Promise<EnvHashMap> {
+async function init(): Promise<EnvHashMap> {
     return invoke("load");
 }
 async function flush(): Promise<void> {
     return invoke("flush");
 }
-async function sync_state_to_backend(variable: string, values?: string[]): Promise<void> {
-    return invoke("sync_state", { variable, values })
+async function send_state(variable: string, values?: string[]): Promise<void> {
+    return invoke("receive_state", { variable, values })
+}
+async function receive_state(): Promise<EnvHashMap> {
+    return invoke("send_state")
 }
 export async function task_list(): Promise<any[]> {
     return invoke("task_list")

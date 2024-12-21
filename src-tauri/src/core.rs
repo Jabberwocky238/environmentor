@@ -32,7 +32,7 @@ impl AppState {
         let data = get_environment_variables();
         self.old_env.clear();
         self.old_env.extend(data.clone());
-        Ok(data)
+        Ok(data) 
     }
 
     pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {

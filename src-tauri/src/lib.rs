@@ -13,7 +13,7 @@ use tauri::{Context, Manager, State, Window};
 // }
 
 #[tauri::command]
-async fn load(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
+async fn init(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
     let result = state.lock().unwrap().init().unwrap();
     Ok(result)
 }
@@ -28,11 +28,17 @@ async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
 }
 
 #[tauri::command]
-fn sync_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
+fn receive_state(state: State<'_, Mutex<AppState>>, variable: &str, values: Option<Vec<String>>) -> tauri::Result<()> {
     let mut state_guard = state.lock().unwrap();
     state_guard.sync_state(variable, values);
     dbg!(variable, &state_guard.new_env[variable]);
     Ok(())
+}
+
+#[tauri::command]
+fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<EnvHashMap> {
+    let state_guard = state.lock().unwrap();
+    Ok(state_guard.new_env.clone())
 }
 
 #[tauri::command]
@@ -50,7 +56,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![load, flush, sync_state, task_list])
+        .invoke_handler(tauri::generate_handler![init, flush, send_state, receive_state, task_list])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

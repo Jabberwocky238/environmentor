@@ -12,7 +12,7 @@ interface IStore {
     setBuffer: (buffer: string) => void;
 }
 
-export const useStore = create<IStore>((set, get) => ({
+export const useStore = create<IStore>((set) => ({
     curVar: "NOTHING",
     isAddValueOpen: false,
     buffer: "",

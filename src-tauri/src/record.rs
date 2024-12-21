@@ -1,52 +1,28 @@
-use std::{collections::{HashMap, HashSet}, time};
+use std::{
+    collections::{HashMap, HashSet},
+    time,
+};
 
 use serde::{Deserialize, Serialize};
 
 macro_rules! declare_task_log_data {
-    ($name:ident, [ $( $item:ident: $ty:ident, )* ]) => {
+    ($name:ident, [ $( $item:ident: $ty:ident), * ]) => {
         #[derive(Serialize, Deserialize, Clone, Default)]
         pub struct $name {
             $( pub $item: $ty, )*
         }
     };
 }
-
-declare_task_log_data!(AddValueLogData, [
-    variable: String,
-    index: usize,
-    value: String,
-]);
-
-declare_task_log_data!(DeleteValueLogData, [
-    variable: String,
-    index: usize,
-    value: String,
-]);
-
-declare_task_log_data!(UpdateValueLogData, [
-    variable: String,
-    index: usize,
-    old_value: String,
-    new_value: String,
-]);
-
-declare_task_log_data!(OrderValueLogData, [
-    variable: String,
-    candidate1: usize,
-    candidate2: usize,
-]);
-
-declare_task_log_data!(AddVariableLogData, [
-    variable: String,
-]);
-
-declare_task_log_data!(DeleteVariableLogData, [
-    variable: String,
-]);
-
 declare_task_log_data!(FlushLogData, []);
 declare_task_log_data!(InitLogData, []);
 
+declare_task_log_data!(AddValueLogData, [ variable: String, index: usize, value: String ]);
+declare_task_log_data!(DeleteValueLogData, [ variable: String, index: usize, value: String ]);
+declare_task_log_data!(UpdateValueLogData, [ variable: String, index: usize, old_value: String, new_value: String ]);
+declare_task_log_data!(OrderValueLogData, [ variable: String, candidate1: usize, candidate2: usize ]);
+
+declare_task_log_data!(AddVariableLogData, [ variable: String ]);
+declare_task_log_data!(DeleteVariableLogData, [variable: String ]);
 // ========================
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -58,6 +34,7 @@ enum TaskLogData {
     DeleteValue(DeleteValueLogData),
     UpdateValue(UpdateValueLogData),
     OrderValue(OrderValueLogData),
+    
     AddVariable(AddVariableLogData),
     DeleteVariable(DeleteVariableLogData),
 }
@@ -133,8 +110,8 @@ impl TaskBuilder {
                     value: what_variable_has[old_len - 1].clone(),
                 }),
             };
-        } else { 
-            // old_len == new_len            
+        } else {
+            // old_len == new_len
             let mut old_set = HashSet::new();
             let mut new_set = HashSet::new();
             for i in 0..old_len {
