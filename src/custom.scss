@@ -1,3 +1,9 @@
+// :root {
+//     --deep-dark: #0f0f0f;
+//     --dark: #1e1e1e;
+//     --light-dark: #363636;
+// }
+
 .row {
     height: 100%;
     width: 100%;
@@ -29,12 +35,16 @@
                 padding: 8px;
                 border-radius: var(--border-radius-general);
                 transition: border-color 0.25s;
-                border: 1px solid transparent;
+                border: 3px solid transparent;
                 cursor: pointer;
 
                 &:hover {
                     border-color: #396cd8;
                 }
+            }
+
+            .active {
+                background-color: #396cd8;
             }
 
             .value-item,
@@ -45,6 +55,13 @@
 
             .value-item {
                 padding: var(--border-radius-general);
+                border-radius: var(--border-radius-general);
+                transition: border-color 0.25s;
+                border: 3px solid transparent;
+
+                &:hover {
+                    border-color: #396cd8;
+                }
             }
 
             .value-item-editing {
@@ -56,5 +73,43 @@
                 }
             }
         }
+    }
+}
+
+
+.btn-group {
+    display: flex;
+    justify-content: space-between;
+
+    button {
+        flex-grow: 1;
+        transition: border-color 0.25s;
+        border: 3px solid transparent;
+
+        &:hover {
+            border-color: #396cd8;
+        }
+    }
+
+    button:first-child {
+        border-top-left-radius: var(--border-radius-general);
+        /* 左上角圆角 */
+        border-top-right-radius: 0;
+        /* 右上角方形 */
+        border-bottom-right-radius: 0;
+        /* 右下角方形 */
+        border-bottom-left-radius: var(--border-radius-general);
+        /* 左下角圆角 */
+    }
+
+    button:last-child {
+        border-top-left-radius: 0;
+        /* 左上角圆角 */
+        border-top-right-radius: var(--border-radius-general);
+        /* 右上角方形 */
+        border-bottom-right-radius: var(--border-radius-general);
+        /* 右下角方形 */
+        border-bottom-left-radius: 0;
+        /* 左下角圆角 */
     }
 }

@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::format;
 use std::time;
 use std::u8;
 
@@ -8,6 +7,16 @@ pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 // ========================
 // ========================
+
+#[allow(unused_variables)]
+trait ConsumeTask {
+    fn forward(&self, map: &mut EnvHashMap) {
+        ()
+    }
+    fn backword(&self, map: &mut EnvHashMap) {
+        ()
+    }
+}
 
 macro_rules! declare_task_log_data {
     ($name:ident, [ $( $item:ident: $ty:ident), * ]) => {
@@ -21,29 +30,13 @@ declare_task_log_data!(InitLog, []);
 declare_task_log_data!(FlushLog, []);
 declare_task_log_data!(RevertLog, []);
 
-declare_task_log_data!(AddValueLog, [ variable: String, value: String ]);
-declare_task_log_data!(DeleteValueLog, [ variable: String, index: usize, value: String ]);
-declare_task_log_data!(UpdateValueLog, [ variable: String, index: usize, old_value: String, new_value: String ]);
-declare_task_log_data!(OrderValueLog, [ variable: String, index_before: usize, index_after: usize, value: String ]);
-declare_task_log_data!(AddVariableLog, [ variable: String ]);
-declare_task_log_data!(DeleteVariableLog, [variable: String ]);
-
-// ========================
-
-#[allow(unused_variables)]
-trait ConsumeTask {
-    fn forward(&self, map: &mut EnvHashMap) {
-        ()
-    }
-    fn backword(&self, map: &mut EnvHashMap) {
-        ()
-    }
-}
-
 impl ConsumeTask for InitLog {}
 impl ConsumeTask for FlushLog {}
 impl ConsumeTask for RevertLog {}
 
+// ========================
+
+declare_task_log_data!(AddValueLog, [ variable: String, value: String ]);
 impl ConsumeTask for AddValueLog {
     fn forward(&self, map: &mut EnvHashMap) {
         // 找有没有这个变量，没有直接panic
@@ -61,13 +54,19 @@ impl ConsumeTask for AddValueLog {
                 values.pop();
                 return;
             }
-            panic!("[ConsumeTask AddValueLog backword] self.value '{}' != values.last() '{}'", self.value, last);
+            panic!(
+                "[ConsumeTask AddValueLog backword] self.value '{}' != values.last() '{}'",
+                self.value, last
+            );
         } else {
             panic!("[ConsumeTask AddValueLog backword] variable not found");
         }
     }
 }
 
+// ========================
+
+declare_task_log_data!(DeleteValueLog, [ variable: String, index: usize, value: String ]);
 impl ConsumeTask for DeleteValueLog {
     fn forward(&self, map: &mut EnvHashMap) {
         if let Some(values) = map.get_mut(&self.variable) {
@@ -85,6 +84,9 @@ impl ConsumeTask for DeleteValueLog {
     }
 }
 
+// ========================
+
+declare_task_log_data!(UpdateValueLog, [ variable: String, index: usize, old_value: String, new_value: String ]);
 impl ConsumeTask for UpdateValueLog {
     fn forward(&self, map: &mut EnvHashMap) {
         if let Some(values) = map.get_mut(&self.variable) {
@@ -109,6 +111,9 @@ impl ConsumeTask for UpdateValueLog {
     }
 }
 
+// ========================
+
+declare_task_log_data!(OrderValueLog, [ variable: String, index_before: usize, index_after: usize, value: String ]);
 impl ConsumeTask for OrderValueLog {
     fn forward(&self, map: &mut EnvHashMap) {
         if let Some(values) = map.get_mut(&self.variable) {
@@ -126,6 +131,8 @@ impl ConsumeTask for OrderValueLog {
     }
 }
 
+// ========================
+declare_task_log_data!(AddVariableLog, [ variable: String ]);
 impl ConsumeTask for AddVariableLog {
     fn forward(&self, map: &mut EnvHashMap) {
         // 如果已经存在这个变量，直接panic
@@ -135,7 +142,8 @@ impl ConsumeTask for AddVariableLog {
                 &self.variable
             );
         }
-        map.insert(self.variable.clone(), vec![]);
+        // DO NOT INSERT AN EMPTY VECTOR, OR IT WON'T BE ADDED
+        map.insert(self.variable.clone(), vec![";".to_string()]);
     }
     fn backword(&self, map: &mut EnvHashMap) {
         // 如果不存在这个变量，直接panic
@@ -149,6 +157,8 @@ impl ConsumeTask for AddVariableLog {
     }
 }
 
+// ========================
+declare_task_log_data!(DeleteVariableLog, [variable: String ]);
 impl ConsumeTask for DeleteVariableLog {
     fn forward(&self, map: &mut EnvHashMap) {
         // 如果不存在这个变量，直接panic
@@ -172,6 +182,7 @@ impl ConsumeTask for DeleteVariableLog {
     }
 }
 
+// ========================
 // ========================
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

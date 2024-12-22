@@ -27,15 +27,6 @@ interface IStore {
     // UI state control
     currentVariable: string;
     switchVariable: (variable: string) => void;
-
-    isAddValueOpen: boolean;
-    setAddValueOpen: (isAdding: boolean) => void;
-
-    buffer: string;
-    setBuffer: (buffer: string) => void;
-
-    curEditValIndex: number;
-    setEditValIndex: (index: number) => void;
 }
 
 
@@ -122,20 +113,6 @@ const useStore = create<IStore>((set, get) => ({
     // UI state control
     currentVariable: "NOTHING",
     switchVariable: (variable: string) => set({ currentVariable: variable }),
-
-    buffer: "",
-    setBuffer: (buffer: string) => set({ buffer }),
-
-    curEditValIndex: -1,
-    isAddValueOpen: false,
-    setEditValIndex: (index: number) => set({
-        curEditValIndex: index,
-        isAddValueOpen: false,
-    }),
-    setAddValueOpen: (isAdding: boolean) => set({
-        curEditValIndex: -1,
-        isAddValueOpen: isAdding,
-    }),
 }));
 
 // ============
@@ -147,11 +124,7 @@ export default function Main(props: { style?: React.CSSProperties }) {
     const { load } = useStore();
 
     useEffect(() => {
-        console.log("[mount] Main")
         load();
-        return () => {
-            console.log("[unmount] Main")
-        }
     }, []);
 
     return (
@@ -176,18 +149,17 @@ function EnvList() {
     const { envs, currentVariable, switchVariable, addVariable, deleteVariable } = useStore();
 
     useEffect(() => {
-        console.log("[mount] EnvList")
-        setEnvKeys(Object.keys(envs).sort());
-        switchVariable(envKeys[0]);
-
-        return () => {
-            console.log("[unmount] EnvList")
+        const _envKeys = Object.keys(envs).sort();
+        setEnvKeys(_envKeys);
+        const isFound = _envKeys.find((key) => key === currentVariable);
+        if (!isFound) {
+            switchVariable(_envKeys[0]);
         }
     }, [envs]);
 
     return (
         <>
-            <div>
+            <div className="btn-group">
                 <button onClick={() => setAdding(true)}>Add</button>
                 <button onClick={() => {
                     deleteVariable(currentVariable);
@@ -196,7 +168,8 @@ function EnvList() {
             </div>
             <div className="list">
                 {envKeys.map((key) => (
-                    <div key={key} className="var-item"
+                    <div key={key} 
+                        className={"var-item " + (currentVariable === key ? " active" : "")}
                         onClick={() => switchVariable(key)}>
                         <strong>{key}</strong>
                     </div>
@@ -220,14 +193,7 @@ function EnvList() {
 
 function Control() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
-    const { syncState, setAddValueOpen, flush } = useStore();
-
-    const btnAdd = () => setAddValueOpen(true);
-    const btnFlush = async () => await flush();
-
-    const btnRefresh = () => {
-        window.location.reload();
-    }
+    const { syncState, currentVariable } = useStore();
 
     useEffect(() => {
         if (syncState === "SYNCED") {
@@ -245,11 +211,7 @@ function Control() {
         <>
             <div>
                 当前应用状态：{stateDom}
-                <button onClick={btnAdd}>Add</button>
-                <button onClick={btnFlush}>Flush</button>
-                <button onClick={btnRefresh}>Refresh</button>
-                <button onClick={() => { }}>Undo</button>
-                <button onClick={() => { }}>Redo</button>
+                <strong>当前选择的环境变量是：{currentVariable}</strong>
             </div>
         </>
     )
@@ -258,8 +220,20 @@ function Control() {
 
 function ValueList() {
     const [valueList, setValueList] = useState<string[]>([]);
+    const [buffer, setBuffer] = useState<string>("");
 
-    const { envs, currentVariable, curEditValIndex, buffer, isAddValueOpen, setAddValueOpen, setBuffer, setEditValIndex, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
+    const { flush, envs, currentVariable, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
+
+    const [curEditValIndex, _setEditValIndex] = useState<number>(-1);
+    const [isAddValueOpen, _setAddValueOpen] = useState<boolean>(false);
+    const setEditValIndex = (index: number) => {
+        _setEditValIndex(index);
+        _setAddValueOpen(false);
+    }
+    const setAddValueOpen = (open: boolean) => {
+        _setAddValueOpen(open);
+        _setEditValIndex(-1);
+    }
 
     useEffect(() => {
         setEditValIndex(-1);
@@ -267,6 +241,14 @@ function ValueList() {
         setBuffer("");
         setValueList(envs[currentVariable] || []);
     }, [currentVariable]);
+
+
+    const btnAdd = () => {
+        setAddValueOpen(true);
+        setBuffer("");
+    };
+    const btnFlush = async () => await flush();
+    const btnRefresh = () => window.location.reload();
 
     const btnOrder = (direction: "up" | "down") => {
         if (direction === "up" && curEditValIndex === 0) return;
@@ -312,7 +294,13 @@ function ValueList() {
 
     return (
         <>
-            <strong>当前选择的环境变量是：{currentVariable}</strong>
+            <div className="btn-group">
+                <button onClick={btnAdd}>Add</button>
+                <button onClick={btnFlush}>Flush</button>
+                <button onClick={btnRefresh}>Refresh</button>
+                <button onClick={() => { }}>Undo</button>
+                <button onClick={() => { }}>Redo</button>
+            </div>
             <div className="list">
                 {valueList.map((v, i) => (
                     <>
