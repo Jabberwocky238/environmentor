@@ -1,10 +1,11 @@
 mod core;
-mod record;
+mod task;
 
 use core::AppState;
 use core::EnvHashMap;
-use record::TaskLog;
 use std::sync::Mutex;
+use task::TaskLog;
+use task::TaskLogData;
 use tauri::{AppHandle, Context, Manager, State, Window};
 
 // #[tauri::command]
@@ -25,10 +26,9 @@ async fn flush(
 ) -> tauri::Result<SendState> {
     dbg!("flushing...");
     state.lock().unwrap().flush().unwrap();
-    let mut state_guard = state.lock().unwrap();
 
-    let env = state_guard.reload().unwrap();
-    let dirty = state_guard.dirty;
+    let state_guard = state.lock().unwrap();
+    let (env, dirty) = (state_guard.cur_env.clone(), state_guard.dirty);
     dbg!("flush END");
     let result = SendState { env, dirty };
     Ok(result)
@@ -39,7 +39,7 @@ fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
     dbg!("send_state");
     let state_guard = state.lock().unwrap();
 
-    let env = state_guard.new_env.clone();
+    let env = state_guard.cur_env.clone();
     let dirty = state_guard.dirty;
 
     let result = SendState { env, dirty };
@@ -47,14 +47,9 @@ fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
 }
 
 #[tauri::command]
-fn receive_state(
-    state: State<'_, Mutex<AppState>>,
-    variable: &str,
-    values: Option<Vec<String>>,
-) -> tauri::Result<()> {
-    let mut state_guard = state.lock().unwrap();
-    state_guard.sync_state(variable, values);
-    dbg!(variable, &state_guard.new_env.get(variable));
+fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri::Result<()> {
+    dbg!(&task);
+    state.lock().unwrap().add_task(task.into());
     Ok(())
 }
 

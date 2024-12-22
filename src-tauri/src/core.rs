@@ -4,17 +4,14 @@ use std::os::windows::process::CommandExt as _;
 use std::process::Command;
 use std::u8;
 
-use crate::record::TaskLog;
-
-use super::record::{Recorder, TaskBuilder};
+use crate::task::{TaskLog, TaskLogData, TaskResolver};
 
 pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppState {
-    pub old_env: EnvHashMap,
-    pub new_env: EnvHashMap,
-    pub recorder: Recorder,
+    pub cur_env: EnvHashMap,
+    pub tasks: Vec<TaskLog>,
     pub dirty: bool,
 }
 
@@ -22,50 +19,48 @@ impl AppState {
     pub fn init(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
         dbg!("init");
         let data = get_environment_variables();
-        self.old_env.extend(data.clone());
-        self.new_env.extend(data.clone());
+        self.cur_env.extend(data.clone());
 
         self.dirty = false;
 
-        let task = TaskBuilder::action("init");
-        self.recorder.add_task(task);
+        self.add_task(TaskLog::init());
 
         Ok(data)
     }
-    pub fn reload(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
+
+    pub fn flush(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
+        let _tasks = self._since_last_flush_tasks();
+        let new_env = TaskResolver::new(&self.cur_env, _tasks).forward();
+        let _ = UpdateResolver::new(self.cur_env.clone(), new_env).resolve();
+
+        self.dirty = false;
+        self.add_task(TaskLog::flush());
+
         let data = get_environment_variables();
-        self.old_env.clear();
-        self.old_env.extend(data.clone());
-        Ok(data)
+        self.cur_env.clear();
+        self.cur_env.extend(data.clone());
+        Ok(self.cur_env.clone())
     }
 
-    pub fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let resolver = UpdateResolver::new(self.old_env.clone(), self.new_env.clone());
-        resolver.resolve();
-
-        self.dirty = false;
-
-        let task = TaskBuilder::action("flush");
-        self.recorder.add_task(task);
-
-        Ok(())
-    }
-
-    pub fn sync_state(&mut self, variable: &str, values: Option<Vec<String>>) {
-        self.dirty = true;
-
-        let task = TaskBuilder::make(&self.new_env, variable, values.clone());
-        self.recorder.add_task(task);
-
-        if let Some(values) = values {
-            self.new_env.insert(variable.to_string(), values);
-        } else {
-            self.new_env.remove(variable);
-        }
+    pub fn add_task(&mut self, task: TaskLog) {
+        self.tasks.push(task);
     }
 
     pub fn task_list(&self) -> Vec<TaskLog> {
-        self.recorder.tasks.clone()
+        self.tasks.clone()
+    }
+
+    fn _since_last_flush_tasks(&self) -> &[TaskLog] {
+        // 调用函数时，末尾处不应有flush任务
+        let mut first_index = 0;
+        let last_index = self.tasks.len();
+        for (index, task) in self.tasks.iter().enumerate().rev() {
+            match task.data {
+                TaskLogData::Flush(_) | TaskLogData::Init(_) => break,
+                _ => first_index = index,
+            }
+        }
+        &self.tasks[first_index..last_index]
     }
 }
 

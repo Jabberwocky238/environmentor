@@ -3,7 +3,7 @@ import Modal from '@@/utils/Modal';
 
 import { create } from "zustand";
 import { useEffect, useState } from "react";
-import { flush as _flush, send_state, receive_state as _receive_state } from "@/core";
+import { flush as _flush, TaskAction, receive_state as _receive_state } from "@/core";
 import { open as _open } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
@@ -15,7 +15,7 @@ interface IStore {
 
     addVariable: (variable: string) => void;
     deleteVariable: (variable: string) => void;
-    addValue: (variable: string, value: string) => string[];
+    appendValue: (variable: string, value: string) => string[];
     modifyValue: (variable: string, index: number, value: string) => string[];
     deleteValue: (variable: string, index: number) => string[];
     orderValue: (variable: string, index: number, direction: "up" | "down") => string[];
@@ -58,66 +58,63 @@ const useStore = create<IStore>((set, get) => ({
     // env actions
     addVariable: (variable: string) => {
         const _variable = variable.trim().toUpperCase();
+        TaskAction.AddVariable({ variable: _variable });
         set((state) => {
             // state.envs[_variable] = [];
             state.envs = { ...state.envs, [_variable]: [] };
             return state;
         });
-        send_state(_variable, []);
         set({ syncState: "NOT_SYNCED" });
     },
     deleteVariable: (variable: string) => {
+        TaskAction.DelVariable({ variable });
         set((state) => {
             delete state.envs[variable];
             state.envs = { ...state.envs };
             return state;
         });
-        send_state(variable, undefined);
         set({ syncState: "NOT_SYNCED" });
     },
 
-    addValue: (variable: string, value: string) => {
+    appendValue: (variable: string, value: string) => {
+        TaskAction.AppendValue({ variable, value });
         set((state) => {
             state.envs[variable].push(value);
             return state;
         });
-        send_state(variable, get().envs[variable]);
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
 
     modifyValue: (variable: string, index: number, value: string) => {
+        TaskAction.ModifyValue({ variable, index, old_value: get().envs[variable][index], new_value: value });
         set((state) => {
             state.envs[variable][index] = value;
             return state;
         });
-        send_state(variable, get().envs[variable]);
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
 
     deleteValue: (variable: string, index: number) => {
+        TaskAction.DeleteValue({ variable, index, value: get().envs[variable][index] });
         set((state) => {
             state.envs[variable].splice(index, 1);
             return state;
         });
-        send_state(variable, get().envs[variable]);
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
 
     orderValue: (variable: string, index: number, direction: "up" | "down") => {
+        const new_index = direction === "up" ? index - 1 : index + 1;
+        const value = get().envs[variable][index];
+        TaskAction.ReorderValue({ variable, index_before: index, index_after: new_index, value });
         set((state) => {
-            const value = state.envs[variable][index];
             state.envs[variable].splice(index, 1);
-            if (direction === "up") {
-                state.envs[variable].splice(index - 1, 0, value);
-            } else {
-                state.envs[variable].splice(index + 1, 0, value);
-            }
+            state.envs[variable].splice(new_index, 0, value);
             return state;
         });
-        send_state(variable, get().envs[variable]);
         set({ syncState: "NOT_SYNCED" });
         return get().envs[variable];
     },
@@ -262,7 +259,7 @@ function Control() {
 function ValueList() {
     const [valueList, setValueList] = useState<string[]>([]);
 
-    const { envs, currentVariable, curEditValIndex, buffer, isAddValueOpen, setAddValueOpen, setBuffer, setEditValIndex, addValue, modifyValue, deleteValue, orderValue } = useStore();
+    const { envs, currentVariable, curEditValIndex, buffer, isAddValueOpen, setAddValueOpen, setBuffer, setEditValIndex, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
 
     useEffect(() => {
         setEditValIndex(-1);
