@@ -37,7 +37,7 @@ jobs:
           rustup component add clippy
           rustup component add rustfmt
           # Install JavaScript dependencies
-          yarn
+          npm install
 
       # - name: Check Rust code
       #   run: |
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build the app
         run: |
-          yarn tauri build
+          npm run tauri build
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
