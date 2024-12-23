@@ -10,9 +10,8 @@ pub type EnvHashMap = HashMap<String, Vec<String>>;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppState {
-    pub cur_env: EnvHashMap,
-    pub tasks: Vec<TaskLog>,
-    pub dirty: bool,
+    cur_env: EnvHashMap,
+    tasks: Vec<TaskLog>,
 }
 
 impl AppState {
@@ -20,8 +19,6 @@ impl AppState {
         dbg!("init");
         let data = get_environment_variables();
         self.cur_env.extend(data.clone());
-
-        self.dirty = false;
 
         self.add_task(TaskLog::init());
 
@@ -33,7 +30,6 @@ impl AppState {
         let new_env = TaskResolver::new(&self.cur_env, _tasks).forward();
         let _ = UpdateResolver::new(self.cur_env.clone(), new_env).resolve();
 
-        self.dirty = false;
         self.add_task(TaskLog::flush());
 
         let data = get_environment_variables();
@@ -50,16 +46,34 @@ impl AppState {
         self.tasks.clone()
     }
 
+    pub fn get_cur_env(&self) -> EnvHashMap {
+        let _tasks = self._since_last_flush_tasks();
+        let new_env = TaskResolver::new(&self.cur_env, _tasks).forward();
+        new_env
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        let _tasks = self._since_last_flush_tasks();
+        // dbg!(_tasks.len());
+        if _tasks.len() > 0 {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     fn _since_last_flush_tasks(&self) -> &[TaskLog] {
         // 调用函数时，末尾处不应有flush任务
-        let mut first_index = 0;
         let last_index = self.tasks.len();
-        for (index, task) in self.tasks.iter().enumerate().rev() {
+        let mut first_index = last_index;
+        for (index, task) in self.tasks.iter().rev().enumerate() {
+            let index = last_index - index - 1;
             match task.data {
                 TaskLogData::Flush(_) | TaskLogData::Init(_) => break,
                 _ => first_index = index,
             }
         }
+        // dbg!(first_index, last_index);
         &self.tasks[first_index..last_index]
     }
 }
@@ -110,8 +124,9 @@ impl UpdateResolver {
         let mut tasks = vec![];
         for (k, v) in updates.iter() {
             println!("update '{}': '{:?}'", k, v);
+            // extra ; is needed to avoid empty string, or it will be removed
             tasks.push(format!(
-                "[Environment]::SetEnvironmentVariable(\"{}\", \"{}\", [EnvironmentVariableTarget]::User)",
+                "[Environment]::SetEnvironmentVariable(\"{}\", \";{}\", [EnvironmentVariableTarget]::User)",
                 k,
                 v.join(";")
             ));

@@ -20,15 +20,12 @@ struct SendState {
 }
 
 #[tauri::command]
-async fn flush(
-    app_handle: AppHandle,
-    state: State<'_, Mutex<AppState>>,
-) -> tauri::Result<SendState> {
+async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
     dbg!("flushing...");
     state.lock().unwrap().flush().unwrap();
 
     let state_guard = state.lock().unwrap();
-    let (env, dirty) = (state_guard.cur_env.clone(), state_guard.dirty);
+    let (env, dirty) = (state_guard.get_cur_env(), state_guard.is_dirty());
     dbg!("flush END");
     let result = SendState { env, dirty };
     Ok(result)
@@ -39,9 +36,7 @@ fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
     dbg!("send_state");
     let state_guard = state.lock().unwrap();
 
-    let env = state_guard.cur_env.clone();
-    let dirty = state_guard.dirty;
-
+    let (env, dirty) = (state_guard.get_cur_env(), state_guard.is_dirty());
     let result = SendState { env, dirty };
     Ok(result)
 }

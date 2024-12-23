@@ -14,11 +14,11 @@ function App() {
 
   return (
     <>
-      <div className="tab">
+      {/* <div className="tab">
         {routes.map((r) => (
           <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
         ))}
-      </div>
+      </div> */}
       <div className="tab-content">
         <Switch>
           <Route path="/">

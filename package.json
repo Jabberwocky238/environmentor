@@ -21,6 +21,8 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@ricons/fluent": "^0.13.0",
+    "@ricons/utils": "^0.1.6",
     "@tauri-apps/cli": "^2",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",

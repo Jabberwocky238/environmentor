@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::time;
 use std::u8;
 
@@ -64,6 +65,16 @@ impl ConsumeTask for AddValueLog {
     }
 }
 
+impl Display for AddValueLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "AddValueLog: variable: {}, value: {}",
+            self.variable, self.value
+        )
+    }
+}
+
 // ========================
 
 declare_task_log_data!(DeleteValueLog, [ variable: String, index: usize, value: String ]);
@@ -81,6 +92,16 @@ impl ConsumeTask for DeleteValueLog {
         } else {
             panic!("[ConsumeTask DeleteValueLog backword] variable not found");
         }
+    }
+}
+
+impl Display for DeleteValueLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "DeleteValueLog: variable: {}, index: {}, value: {}",
+            self.variable, self.index, self.value
+        )
     }
 }
 
@@ -111,6 +132,16 @@ impl ConsumeTask for UpdateValueLog {
     }
 }
 
+impl Display for UpdateValueLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "UpdateValueLog: variable: {}, index: {}, old_value: {}, new_value: {}",
+            self.variable, self.index, self.old_value, self.new_value
+        )
+    }
+}
+
 // ========================
 
 declare_task_log_data!(OrderValueLog, [ variable: String, index_before: usize, index_after: usize, value: String ]);
@@ -131,6 +162,16 @@ impl ConsumeTask for OrderValueLog {
     }
 }
 
+impl Display for OrderValueLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "OrderValueLog: variable: {}, index_before: {}, index_after: {}, value: {}",
+            self.variable, self.index_before, self.index_after, self.value
+        )
+    } 
+}
+
 // ========================
 declare_task_log_data!(AddVariableLog, [ variable: String ]);
 impl ConsumeTask for AddVariableLog {
@@ -142,8 +183,7 @@ impl ConsumeTask for AddVariableLog {
                 &self.variable
             );
         }
-        // DO NOT INSERT AN EMPTY VECTOR, OR IT WON'T BE ADDED
-        map.insert(self.variable.clone(), vec![";".to_string()]);
+        map.insert(self.variable.clone(), vec![]);
     }
     fn backword(&self, map: &mut EnvHashMap) {
         // 如果不存在这个变量，直接panic
@@ -154,6 +194,12 @@ impl ConsumeTask for AddVariableLog {
             );
         }
         map.remove(&self.variable);
+    }
+}
+
+impl Display for AddVariableLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AddVariableLog: variable: {}", self.variable)
     }
 }
 
@@ -178,7 +224,14 @@ impl ConsumeTask for DeleteVariableLog {
                 &self.variable
             );
         }
+        // TODO: record current values, for unoccational undo
         map.insert(self.variable.clone(), vec![]);
+    }
+}
+
+impl Display for DeleteVariableLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DeleteVariableLog: variable: {}", self.variable)
     }
 }
 

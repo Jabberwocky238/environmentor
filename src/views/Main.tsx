@@ -4,7 +4,7 @@ import Modal from '@@/utils/Modal';
 import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { flush as _flush, TaskAction, receive_state as _receive_state } from "@/core";
-import { open as _open } from '@tauri-apps/plugin-dialog';
+import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
 interface IStore {
@@ -34,12 +34,12 @@ const useStore = create<IStore>((set, get) => ({
     envs: {},
     load: async () => {
         let { env, dirty } = await _receive_state();
-        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }), true);
+        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
     },
     flush: async () => {
         set({ syncState: "SYNCING" });
-        let { env } = await _flush();
-        set({ syncState: "SYNCED", envs: env });
+        let { env, dirty } = await _flush();
+        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
     },
 
     // syncState management
@@ -157,18 +157,23 @@ function EnvList() {
         }
     }, [envs]);
 
+    const btnDelete = () => {
+        _ask(`Are you sure to delete the variable '${currentVariable}'?`).then((res) => {
+            if (!res) return;
+            deleteVariable(currentVariable);
+            switchVariable(envKeys[0]);
+        });
+    }
+
     return (
         <>
             <div className="btn-group">
                 <button onClick={() => setAdding(true)}>Add</button>
-                <button onClick={() => {
-                    deleteVariable(currentVariable);
-                    switchVariable(envKeys[0]);
-                }}>Del</button>
+                <button onClick={btnDelete}>Del</button>
             </div>
             <div className="list">
                 {envKeys.map((key) => (
-                    <div key={key} 
+                    <div key={key}
                         className={"var-item " + (currentVariable === key ? " active" : "")}
                         onClick={() => switchVariable(key)}>
                         <strong>{key}</strong>
@@ -210,8 +215,8 @@ function Control() {
     return (
         <>
             <div>
-                当前应用状态：{stateDom}
-                <strong>当前选择的环境变量是：{currentVariable}</strong>
+                <div>当前应用状态：{stateDom}</div>
+                当前选择的环境变量是：<strong>{currentVariable}</strong>
             </div>
         </>
     )
@@ -298,8 +303,8 @@ function ValueList() {
                 <button onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>
-                <button onClick={() => { }}>Undo</button>
-                <button onClick={() => { }}>Redo</button>
+                {/* <button onClick={() => { }}>Undo</button>
+                <button onClick={() => { }}>Redo</button> */}
             </div>
             <div className="list">
                 {valueList.map((v, i) => (
@@ -313,17 +318,17 @@ function ValueList() {
 
                         <div className="value-item-editing"
                             style={{ display: i === curEditValIndex ? "flex" : "none" }}>
-                            <button onClick={() => btnOrder('up')}>↑</button>
-                            <button onClick={() => btnOrder('down')}>↓</button>
+                            <button onClick={() => btnOrder('up')}><Up /></button>
+                            <button onClick={() => btnOrder('down')}><Down /></button>
 
                             <input
                                 onChange={(e) => setBuffer(e.currentTarget.value)}
                                 placeholder="Enter value"
                                 value={buffer}
                             />
-                            <button onClick={btnModifyConform}>Conform</button>
-                            <button onClick={btnFromFS}>FromFS</button>
-                            <button onClick={btnDelete}>Delete</button>
+                            <button onClick={btnModifyConform}><Checkmark /></button>
+                            <button onClick={btnFromFS}><FromFS /></button>
+                            <button onClick={btnDelete}><Delete /></button>
                         </div>
                     </>
                 ))}
@@ -335,13 +340,32 @@ function ValueList() {
                         placeholder="Enter value"
                         value={buffer}
                     />
-                    <button onClick={btnAddConform}>+</button>
+                    <button onClick={btnAddConform}><Checkmark /></button>
+                    <button onClick={btnFromFS}><FromFS /></button>
                 </div>
             </div>
         </>
     )
 }
 
+import { Checkmark12Filled, Document16Filled, Delete16Filled, ArrowUp12Filled, ArrowDown12Filled } from '@ricons/fluent'
+import { Icon } from '@ricons/utils'
+
+function Checkmark() {
+    return <Icon size="24"><Checkmark12Filled /></Icon>
+}
+function FromFS() {
+    return <Icon size="24"><Document16Filled /></Icon>
+}
+function Delete() {
+    return <Icon size="24"><Delete16Filled /></Icon>
+}
+function Up() {
+    return <Icon size="24"><ArrowUp12Filled /></Icon>
+}
+function Down() {
+    return <Icon size="24"><ArrowDown12Filled /></Icon>
+}
 function StateClean() {
     return <strong style={{ color: 'green' }}>已同步</strong>
 }
