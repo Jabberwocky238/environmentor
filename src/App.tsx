@@ -4,13 +4,13 @@ import Main from "@/views/Main";
 import "./App.css";
 import "./App.scss";
 import "./custom.scss";
-import { Link, Route, Switch } from "wouter";
+import { Link as _, Route, Switch } from "wouter";
 
 function App() {
-  const routes = [
-    { href: "/", title: 'Main' },
-    // { href: "/history", title: 'History' }
-  ]
+  // const routes = [
+  //   { href: "/", title: 'Main' },
+  //   // { href: "/history", title: 'History' }
+  // ]
 
   return (
     <>
