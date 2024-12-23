@@ -25,7 +25,7 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
           node-version: 20
@@ -46,7 +46,7 @@ jobs:
 
       - name: Build the app
         run: |
-          cargo tauri build
+          yarn tauri build
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
