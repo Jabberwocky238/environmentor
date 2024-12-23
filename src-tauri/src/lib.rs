@@ -49,9 +49,13 @@ fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri:
 }
 
 #[tauri::command]
-fn task_list(state: State<'_, Mutex<AppState>>) -> tauri::Result<Vec<TaskLog>> {
-    let state_guard = state.lock().unwrap();
-    Ok(state_guard.task_list())
+fn undo(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
+    dbg!("undo");
+    let mut state_guard = state.lock().unwrap();
+    state_guard.try_undo();
+    let (env, dirty) = (state_guard.get_cur_env(), state_guard.is_dirty());
+    let result = SendState { env, dirty };
+    Ok(result)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -69,7 +73,7 @@ pub fn run() {
             flush,
             send_state,
             receive_state,
-            task_list
+            undo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

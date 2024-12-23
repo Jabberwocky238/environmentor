@@ -65,16 +65,6 @@ impl ConsumeTask for AddValueLog {
     }
 }
 
-impl Display for AddValueLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "AddValueLog: variable: {}, value: {}",
-            self.variable, self.value
-        )
-    }
-}
-
 // ========================
 
 declare_task_log_data!(DeleteValueLog, [ variable: String, index: usize, value: String ]);
@@ -92,16 +82,6 @@ impl ConsumeTask for DeleteValueLog {
         } else {
             panic!("[ConsumeTask DeleteValueLog backword] variable not found");
         }
-    }
-}
-
-impl Display for DeleteValueLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "DeleteValueLog: variable: {}, index: {}, value: {}",
-            self.variable, self.index, self.value
-        )
     }
 }
 
@@ -132,16 +112,6 @@ impl ConsumeTask for UpdateValueLog {
     }
 }
 
-impl Display for UpdateValueLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "UpdateValueLog: variable: {}, index: {}, old_value: {}, new_value: {}",
-            self.variable, self.index, self.old_value, self.new_value
-        )
-    }
-}
-
 // ========================
 
 declare_task_log_data!(OrderValueLog, [ variable: String, index_before: usize, index_after: usize, value: String ]);
@@ -160,16 +130,6 @@ impl ConsumeTask for OrderValueLog {
         }
         panic!("[ConsumeTask OrderValueLog backword] variable not found");
     }
-}
-
-impl Display for OrderValueLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "OrderValueLog: variable: {}, index_before: {}, index_after: {}, value: {}",
-            self.variable, self.index_before, self.index_after, self.value
-        )
-    } 
 }
 
 // ========================
@@ -197,12 +157,6 @@ impl ConsumeTask for AddVariableLog {
     }
 }
 
-impl Display for AddVariableLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "AddVariableLog: variable: {}", self.variable)
-    }
-}
-
 // ========================
 declare_task_log_data!(DeleteVariableLog, [variable: String ]);
 impl ConsumeTask for DeleteVariableLog {
@@ -226,12 +180,6 @@ impl ConsumeTask for DeleteVariableLog {
         }
         // TODO: record current values, for unoccational undo
         map.insert(self.variable.clone(), vec![]);
-    }
-}
-
-impl Display for DeleteVariableLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DeleteVariableLog: variable: {}", self.variable)
     }
 }
 

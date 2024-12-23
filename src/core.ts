@@ -9,7 +9,9 @@ async function flush(): Promise<ReceivedData> {
 async function receive_state(): Promise<ReceivedData> {
     return invoke("send_state")
 }
-
+async function undo(): Promise<ReceivedData> {
+    return invoke("undo")
+}
 
 interface ITask {
     'AddVariable': { variable: string },
@@ -38,9 +40,6 @@ const TaskAction: ITaskAction = {
     ReorderValue: async (data: ITask['ReorderValue']) => invoke("receive_state", { task: { "ReorderValue": data } }),
 }
 
-async function task_list(): Promise<any[]> {
-    return invoke("task_list")
-}
 
-export { flush, TaskAction, receive_state, task_list };
+export { flush, TaskAction, receive_state, undo };
 export type { EnvHashMap, ReceivedData };

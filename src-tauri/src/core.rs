@@ -62,6 +62,14 @@ impl AppState {
         }
     }
 
+    pub fn try_undo(&mut self) {
+        let _tasks = self._since_last_flush_tasks();
+        let _ = match _tasks.last() {
+            Some(_) => self.tasks.pop(),
+            None => None,
+        };
+    }
+
     fn _since_last_flush_tasks(&self) -> &[TaskLog] {
         // 调用函数时，末尾处不应有flush任务
         let last_index = self.tasks.len();

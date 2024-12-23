@@ -1,8 +1,12 @@
 {
-  "name": "tauri-app",
+  "name": "environmentor",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jabberwocky238/environmentor"
+  },
   "engines": {
     "node": "^18.0.0 || >=20.0.0"
   },

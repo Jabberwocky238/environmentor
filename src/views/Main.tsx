@@ -3,7 +3,7 @@ import Modal from '@@/utils/Modal';
 
 import { create } from "zustand";
 import { useEffect, useState } from "react";
-import { flush as _flush, TaskAction, receive_state as _receive_state } from "@/core";
+import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo } from "@/core";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
@@ -12,6 +12,7 @@ interface IStore {
     envs: EnvHashMap;
     load: () => Promise<void>;
     flush: () => Promise<void>;
+    undo: () => Promise<void>;
 
     addVariable: (variable: string) => void;
     deleteVariable: (variable: string) => void;
@@ -39,6 +40,10 @@ const useStore = create<IStore>((set, get) => ({
     flush: async () => {
         set({ syncState: "SYNCING" });
         let { env, dirty } = await _flush();
+        set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
+    },
+    undo: async () => {
+        let { env, dirty } = await _undo();
         set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
     },
 
@@ -122,7 +127,6 @@ const useStore = create<IStore>((set, get) => ({
 export default function Main(props: { style?: React.CSSProperties }) {
     const { style } = props;
     const { load } = useStore();
-    const [currentVariable, switchVariable] = useState<string>("");
 
     useEffect(() => {
         load();
@@ -131,29 +135,23 @@ export default function Main(props: { style?: React.CSSProperties }) {
     return (
         <div style={style} className="row">
             <div className="col" style={{ '--col-width': '25%' } as React.CSSProperties}>
-                <EnvList currentVariable={currentVariable} switchVariable={(a: string) => switchVariable(a)}></EnvList>
+                <EnvList></EnvList>
             </div>
             <div className="col" style={{ '--col-width': '75%' } as React.CSSProperties}>
-                <StateShow></StateShow>
-                <ValueList currentVariable={currentVariable}></ValueList>
+                <Control></Control>
+                <ValueList></ValueList>
             </div>
         </div>
     )
 }
 
-interface IEnvListProps { 
-    currentVariable: string;
-    switchVariable: (variable: string) => void;
-}
 
-function EnvList(props: IEnvListProps) {
-    const { currentVariable, switchVariable } = props;
-
+function EnvList() {
     const [envKeys, setEnvKeys] = useState<string[]>([]);
     const [buffer, setBuffer] = useState<string>("");
     const [isAdding, setAdding] = useState<boolean>(false);
 
-    const { envs, addVariable, deleteVariable } = useStore();
+    const { envs, currentVariable, switchVariable, addVariable, deleteVariable } = useStore();
 
     useEffect(() => {
         const _envKeys = Object.keys(envs).sort();
@@ -181,7 +179,7 @@ function EnvList(props: IEnvListProps) {
             <div className="list">
                 {envKeys.map((key) => (
                     <div key={key}
-                        className={"var-item " + (currentVariable === key ? " active" : "")}
+                        className={"item " + (currentVariable === key ? "active" : "")}
                         onClick={() => switchVariable(key)}>
                         <strong>{key}</strong>
                     </div>
@@ -203,7 +201,7 @@ function EnvList(props: IEnvListProps) {
     )
 }
 
-function StateShow() {
+function Control() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
     const { syncState, currentVariable } = useStore();
 
@@ -229,16 +227,11 @@ function StateShow() {
     )
 }
 
-interface IValueListProps { 
-    currentVariable: string;
-}
 
-function ValueList(props: IValueListProps) {
-    const { currentVariable } = props;
-    const [valueList, setValueList] = useState<string[]>([]);
+function ValueList() {
     const [buffer, setBuffer] = useState<string>("");
 
-    const { flush, envs, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
+    const { flush, undo, envs, currentVariable, syncState, appendValue, modifyValue, deleteValue, orderValue } = useStore();
 
     const [curEditValIndex, _setEditValIndex] = useState<number>(-1);
     const [isAddValueOpen, _setAddValueOpen] = useState<boolean>(false);
@@ -255,7 +248,6 @@ function ValueList(props: IValueListProps) {
         setEditValIndex(-1);
         setAddValueOpen(false);
         setBuffer("");
-        setValueList(envs[currentVariable] || []);
     }, [currentVariable]);
 
 
@@ -265,38 +257,35 @@ function ValueList(props: IValueListProps) {
     };
     const btnFlush = async () => await flush();
     const btnRefresh = () => window.location.reload();
+    const btnUndo = async () => await undo();
 
     const btnOrder = (direction: "up" | "down") => {
         if (direction === "up" && curEditValIndex === 0) return;
-        if (direction === "down" && curEditValIndex === valueList.length - 1) return;
+        if (direction === "down" && curEditValIndex === envs[currentVariable].length - 1) return;
         const newList = orderValue(currentVariable, curEditValIndex, direction);
-        setValueList(newList);
         setEditValIndex(direction === "up" ? curEditValIndex - 1 : curEditValIndex + 1);
     }
 
     const btnModifyConform = () => {
         // 如果没有任何变化，就直接退出编辑状态
-        if (buffer === valueList[curEditValIndex]) {
+        if (buffer === envs[currentVariable][curEditValIndex]) {
             setEditValIndex(-1);
             setBuffer("");
             return;
         }
         const newList = modifyValue(currentVariable, curEditValIndex, buffer);
-        setValueList(newList);
         setEditValIndex(-1);
         setBuffer("");
     }
 
     const btnAddConform = () => {
-        const newList = addValue(currentVariable, buffer);
-        setValueList(newList);
+        const newList = appendValue(currentVariable, buffer);
         setAddValueOpen(false);
         setBuffer("");
     }
 
     const btnDelete = () => {
         const newList = deleteValue(currentVariable, curEditValIndex);
-        setValueList(newList);
         setEditValIndex(-1);
         setBuffer("");
     }
@@ -314,20 +303,22 @@ function ValueList(props: IValueListProps) {
                 <button onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>
-                {/* <button onClick={() => { }}>Undo</button>
-                <button onClick={() => { }}>Redo</button> */}
+                <button onClick={btnUndo} disabled={
+                    syncState === "SYNCING" || syncState === "SYNCED"
+                }>Undo</button>
+                {/* <button onClick={() => { }}>Redo</button> */}
             </div>
             <div className="list">
-                {valueList.map((v, i) => (
+                {envs[currentVariable] && envs[currentVariable].map((v, i) => (
                     <>
-                        <div className="value-item"
+                        <div className="item"
                             style={{ display: i === curEditValIndex ? "none" : "block" }}
                             onClick={() => {
                                 setEditValIndex(i);
                                 setBuffer(v);
                             }}>{v}</div>
 
-                        <div className="value-item-editing"
+                        <div className="item editing"
                             style={{ display: i === curEditValIndex ? "flex" : "none" }}>
                             <button onClick={() => btnOrder('up')}><Up /></button>
                             <button onClick={() => btnOrder('down')}><Down /></button>
@@ -344,7 +335,7 @@ function ValueList(props: IValueListProps) {
                     </>
                 ))}
 
-                <div className="value-item-editing"
+                <div className="item editing"
                     style={{ display: isAddValueOpen ? "flex" : "none" }}>
                     <input
                         onChange={(e) => setBuffer(e.currentTarget.value)}
