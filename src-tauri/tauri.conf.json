@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
-  "version": "0.1.0",
-  "identifier": "com.tauri-app.app",
+  "productName": "environmentor",
+  "version": "0.1.1",
+  "identifier": "com.jw238.environmentor",
   "build": {
     "beforeDevCommand": "yarn dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
+        "title": "Environmentor",
         "width": 800,
         "height": 600
       }

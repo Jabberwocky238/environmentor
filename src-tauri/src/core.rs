@@ -123,7 +123,8 @@ impl UpdateResolver {
         self._resolve();
     }
     fn _resolve(&self) {
-        let tasks = self._create_tasks();
+        let (updates, deletes) = self._filter();
+        let tasks = self._create_tasks(updates, deletes);
         Command::new("powershell")
             .arg(tasks.join(";"))
             .creation_flags(0x08000000) // CREATE_NO_WINDOW
@@ -150,8 +151,7 @@ impl UpdateResolver {
     }
 
     // 生成更新环境变量的任务字符串
-    fn _create_tasks(&self) -> Vec<String> {
-        let (updates, deletes) = self._filter();
+    fn _create_tasks(&self, updates: EnvHashMap, deletes: Vec<String>) -> Vec<String> {
         let mut tasks = vec![];
         for (k, v) in updates.iter() {
             println!("update '{}': '{:?}'", k, v);
