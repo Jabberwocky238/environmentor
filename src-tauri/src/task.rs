@@ -158,7 +158,8 @@ impl ConsumeTask for AddVariableLog {
 }
 
 // ========================
-declare_task_log_data!(DeleteVariableLog, [variable: String ]);
+type VecString = Vec<String>;
+declare_task_log_data!(DeleteVariableLog, [ variable: String, values: VecString ]);
 impl ConsumeTask for DeleteVariableLog {
     fn forward(&self, map: &mut EnvHashMap) {
         // 如果不存在这个变量，直接panic
@@ -178,8 +179,7 @@ impl ConsumeTask for DeleteVariableLog {
                 &self.variable
             );
         }
-        // TODO: record current values, for unoccational undo
-        map.insert(self.variable.clone(), vec![]);
+        map.insert(self.variable.clone(), self.values.clone());
     }
 }
 

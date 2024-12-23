@@ -6,6 +6,7 @@ use core::EnvHashMap;
 use std::sync::Mutex;
 use task::TaskLog;
 use task::TaskLogData;
+use tauri::Emitter;
 use tauri::{AppHandle, Context, Manager, State, Window};
 
 // #[tauri::command]
@@ -48,11 +49,57 @@ fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri:
     Ok(())
 }
 
+// interface INotification {
+//     color: 'success' | 'error' | 'warning' | 'info';
+//     timestamp: number;
+//     title?: string;
+//     message: string;
+// }
+
+enum NotificationColor {
+    Success,
+    Error,
+    Warning,
+    Info,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct Notification {
+    color: String,
+    timestamp: i64,
+    title: Option<String>,
+    message: String,
+}
+
+impl Notification {
+    pub fn new(color: NotificationColor, message: &str) -> Self {
+        let color = match color {
+            NotificationColor::Success => "success",
+            NotificationColor::Error => "error",
+            NotificationColor::Warning => "warning",
+            NotificationColor::Info => "info",
+        };
+        Self {
+            color: color.to_string(),
+            timestamp: 0,
+            title: None,
+            message: message.to_string(),
+        }
+    }
+}
+
 #[tauri::command]
-fn undo(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
+fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
     dbg!("undo");
     let mut state_guard = state.lock().unwrap();
-    state_guard.try_undo();
+    let notification = match state_guard.try_undo() {
+        Ok(msg) => Notification::new(NotificationColor::Success, &msg),
+        Err(msg) => Notification::new(NotificationColor::Warning, &msg),
+    };
+    app_handle
+        .emit("notification", notification)
+        .expect("failed to emit notification");
+
     let (env, dirty) = (state_guard.get_cur_env(), state_guard.is_dirty());
     let result = SendState { env, dirty };
     Ok(result)

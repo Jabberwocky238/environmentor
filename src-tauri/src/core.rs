@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::result::Result;
 use std::os::windows::process::CommandExt as _;
 use std::process::Command;
 use std::u8;
@@ -62,12 +63,34 @@ impl AppState {
         }
     }
 
-    pub fn try_undo(&mut self) {
+    pub fn try_undo(&mut self) -> Result<String, &str> {
         let _tasks = self._since_last_flush_tasks();
-        let _ = match _tasks.last() {
-            Some(_) => self.tasks.pop(),
-            None => None,
+        let _task = match _tasks.last() {
+            Some(_) => self.tasks.pop().unwrap(),
+            None => return Err("[illigal calling] No task to undo"),
         };
+        return match _task.data {
+            TaskLogData::Flush(_) => Err("[illigal calling] Cannot undo TaskLog::Flush"),
+            TaskLogData::Init(_) => Err("[illigal calling] Cannot undo TaskLog::Init"),
+            TaskLogData::AddVariable(log) => {
+                Ok(format!("Undo Task: 重新删除 '{}'", log.variable))
+            },
+            TaskLogData::DelVariable(log) => {
+                Ok(format!("Undo Task: 恢复 '{}'", log.variable))
+            },
+            TaskLogData::AppendValue(log) => {
+                Ok(format!("Undo Task: 重新删除 '{}'", log.variable))
+            },
+            TaskLogData::DeleteValue(log) => {
+                Ok(format!("Undo Task: 恢复变量 '{}' 中的 ''{}", log.variable, log.value))
+            },
+            TaskLogData::ModifyValue(log) => {
+                Ok(format!("Undo Task: 恢复值 '{}' 为 '{}'", log.new_value, log.old_value))
+            },
+            TaskLogData::ReorderValue(log) => {
+                Ok(format!("Undo Task: 恢复值 '{}' 的排序", log.variable))
+            },
+        }
     }
 
     fn _since_last_flush_tasks(&self) -> &[TaskLog] {

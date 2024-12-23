@@ -1,23 +1,47 @@
 
 import Main from "@/views/Main";
+import Notification from "@@/utils/Notification";
 
 import "./App.css";
 import "./App.scss";
-import { Link as _, Route, Switch } from "wouter";
+import { Link, Route, Switch } from "wouter";
+import { emitter } from "@/core";
+import { useEffect } from "react";
+import { event } from "@tauri-apps/api";
+
+function backendEventResolver(n: { event: string, id: number, payload: any }) {
+  switch (n.event) {
+    case "notification":
+      return emitter.emit("notification", n.payload);
+    default:
+      return n;
+  }
+}
 
 function App() {
-  // const routes = [
-  //   { href: "/", title: 'Main' },
-  //   // { href: "/history", title: 'History' }
-  // ]
+  const routes = [
+    { href: "/", title: 'Main' },
+    // { href: "/history", title: 'History' }
+  ]
+
+  useEffect(() => {
+    const unlisten = event.listen("notification", (n: any) => {
+      console.log("[App useEffect] notification", n);
+      backendEventResolver(n);
+    })
+    return () => {
+      unlisten.then((u) => u());
+    }
+  }, []);
 
   return (
     <>
-      {/* <div className="tab">
+      <Notification />
+      <div className="tab">
         {routes.map((r) => (
           <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
         ))}
-      </div> */}
+      </div>
       <div className="tab-content">
         <Switch>
           <Route path="/">

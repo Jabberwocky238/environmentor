@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import mitt from "mitt";
 
+const emitter = mitt();
 type EnvHashMap = { [key: string]: string[] };
 type ReceivedData = { env: EnvHashMap, dirty: boolean };
 
@@ -15,7 +17,7 @@ async function undo(): Promise<ReceivedData> {
 
 interface ITask {
     'AddVariable': { variable: string },
-    'DelVariable': { variable: string },
+    'DelVariable': { variable: string, values: string[] },
     'AppendValue': { variable: string, value: string },
     'DeleteValue': { variable: string, index: number, value: string },
     'ModifyValue': { variable: string, index: number, old_value: string, new_value: string },
@@ -41,5 +43,5 @@ const TaskAction: ITaskAction = {
 }
 
 
-export { flush, TaskAction, receive_state, undo };
+export { flush, emitter, TaskAction, receive_state, undo };
 export type { EnvHashMap, ReceivedData };

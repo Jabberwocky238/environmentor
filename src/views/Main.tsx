@@ -16,10 +16,10 @@ interface IStore {
 
     addVariable: (variable: string) => void;
     deleteVariable: (variable: string) => void;
-    appendValue: (variable: string, value: string) => string[];
-    modifyValue: (variable: string, index: number, value: string) => string[];
-    deleteValue: (variable: string, index: number) => string[];
-    orderValue: (variable: string, index: number, direction: "up" | "down") => string[];
+    appendValue: (variable: string, value: string) => void;
+    modifyValue: (variable: string, index: number, value: string) => void;
+    deleteValue: (variable: string, index: number) => void;
+    orderValue: (variable: string, index: number, direction: "up" | "down") => void;
 
     // state management
     syncState: SyncState;
@@ -63,8 +63,8 @@ const useStore = create<IStore>((set, get) => ({
         set({ syncState: "NOT_SYNCED" });
     },
     deleteVariable: (variable: string) => {
-        TaskAction.DelVariable({ variable });
         set((state) => {
+            TaskAction.DelVariable({ variable, values: state.envs[variable] });
             delete state.envs[variable];
             state.envs = { ...state.envs };
             return state;
@@ -79,7 +79,6 @@ const useStore = create<IStore>((set, get) => ({
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
-        return get().envs[variable];
     },
 
     modifyValue: (variable: string, index: number, value: string) => {
@@ -89,7 +88,6 @@ const useStore = create<IStore>((set, get) => ({
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
-        return get().envs[variable];
     },
 
     deleteValue: (variable: string, index: number) => {
@@ -99,7 +97,6 @@ const useStore = create<IStore>((set, get) => ({
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
-        return get().envs[variable];
     },
 
     orderValue: (variable: string, index: number, direction: "up" | "down") => {
@@ -112,7 +109,6 @@ const useStore = create<IStore>((set, get) => ({
             return state;
         });
         set({ syncState: "NOT_SYNCED" });
-        return get().envs[variable];
     },
 
     // UI state control
@@ -262,7 +258,7 @@ function ValueList() {
     const btnOrder = (direction: "up" | "down") => {
         if (direction === "up" && curEditValIndex === 0) return;
         if (direction === "down" && curEditValIndex === envs[currentVariable].length - 1) return;
-        const newList = orderValue(currentVariable, curEditValIndex, direction);
+        orderValue(currentVariable, curEditValIndex, direction);
         setEditValIndex(direction === "up" ? curEditValIndex - 1 : curEditValIndex + 1);
     }
 
@@ -273,19 +269,19 @@ function ValueList() {
             setBuffer("");
             return;
         }
-        const newList = modifyValue(currentVariable, curEditValIndex, buffer);
+        modifyValue(currentVariable, curEditValIndex, buffer);
         setEditValIndex(-1);
         setBuffer("");
     }
 
     const btnAddConform = () => {
-        const newList = appendValue(currentVariable, buffer);
+        appendValue(currentVariable, buffer);
         setAddValueOpen(false);
         setBuffer("");
     }
 
     const btnDelete = () => {
-        const newList = deleteValue(currentVariable, curEditValIndex);
+        deleteValue(currentVariable, curEditValIndex);
         setEditValIndex(-1);
         setBuffer("");
     }
@@ -306,7 +302,6 @@ function ValueList() {
                 <button onClick={btnUndo} disabled={
                     syncState === "SYNCING" || syncState === "SYNCED"
                 }>Undo</button>
-                {/* <button onClick={() => { }}>Redo</button> */}
             </div>
             <div className="list">
                 {envs[currentVariable] && envs[currentVariable].map((v, i) => (
