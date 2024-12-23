@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "20.9.0"
+  },
+  "registry": "https://registry.npmjs.org/",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
