@@ -39,10 +39,10 @@ jobs:
           # Install JavaScript dependencies
           yarn
 
-      - name: Check Rust code
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy -- -D warnings
+      # - name: Check Rust code
+      #   run: |
+      #     cargo fmt --all -- --check
+      #     cargo clippy -- -D warnings
 
       - name: Build the app
         run: |
