@@ -37,4 +37,13 @@ export default defineConfig(async () => ({
       "@@": "/src/components"
     },
   },
+
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+        // additionalData: `@import "@/styles/variables.scss";`,
+      },
+    },
+  }
 }));

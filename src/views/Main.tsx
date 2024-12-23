@@ -122,6 +122,7 @@ const useStore = create<IStore>((set, get) => ({
 export default function Main(props: { style?: React.CSSProperties }) {
     const { style } = props;
     const { load } = useStore();
+    const [currentVariable, switchVariable] = useState<string>("");
 
     useEffect(() => {
         load();
@@ -130,23 +131,29 @@ export default function Main(props: { style?: React.CSSProperties }) {
     return (
         <div style={style} className="row">
             <div className="col" style={{ '--col-width': '25%' } as React.CSSProperties}>
-                <EnvList></EnvList>
+                <EnvList currentVariable={currentVariable} switchVariable={(a: string) => switchVariable(a)}></EnvList>
             </div>
             <div className="col" style={{ '--col-width': '75%' } as React.CSSProperties}>
-                <Control></Control>
-                <ValueList></ValueList>
+                <StateShow></StateShow>
+                <ValueList currentVariable={currentVariable}></ValueList>
             </div>
         </div>
     )
 }
 
+interface IEnvListProps { 
+    currentVariable: string;
+    switchVariable: (variable: string) => void;
+}
 
-function EnvList() {
+function EnvList(props: IEnvListProps) {
+    const { currentVariable, switchVariable } = props;
+
     const [envKeys, setEnvKeys] = useState<string[]>([]);
     const [buffer, setBuffer] = useState<string>("");
     const [isAdding, setAdding] = useState<boolean>(false);
 
-    const { envs, currentVariable, switchVariable, addVariable, deleteVariable } = useStore();
+    const { envs, addVariable, deleteVariable } = useStore();
 
     useEffect(() => {
         const _envKeys = Object.keys(envs).sort();
@@ -196,7 +203,7 @@ function EnvList() {
     )
 }
 
-function Control() {
+function StateShow() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
     const { syncState, currentVariable } = useStore();
 
@@ -222,12 +229,16 @@ function Control() {
     )
 }
 
+interface IValueListProps { 
+    currentVariable: string;
+}
 
-function ValueList() {
+function ValueList(props: IValueListProps) {
+    const { currentVariable } = props;
     const [valueList, setValueList] = useState<string[]>([]);
     const [buffer, setBuffer] = useState<string>("");
 
-    const { flush, envs, currentVariable, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
+    const { flush, envs, appendValue: addValue, modifyValue, deleteValue, orderValue } = useStore();
 
     const [curEditValIndex, _setEditValIndex] = useState<number>(-1);
     const [isAddValueOpen, _setAddValueOpen] = useState<boolean>(false);

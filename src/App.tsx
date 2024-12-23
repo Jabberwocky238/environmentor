@@ -3,7 +3,6 @@ import Main from "@/views/Main";
 
 import "./App.css";
 import "./App.scss";
-import "./custom.scss";
 import { Link as _, Route, Switch } from "wouter";
 
 function App() {
