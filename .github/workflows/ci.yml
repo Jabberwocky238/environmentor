@@ -29,6 +29,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
+          registry-url: 'https://registry.yarnpkg.com'
 
       - name: Install app dependencies
         run: |
@@ -36,7 +37,7 @@ jobs:
           rustup component add clippy
           rustup component add rustfmt
           # Install JavaScript dependencies
-          yarn install --frozen-lockfile --registry https://registry.npm.taobao.org
+          yarn
 
       - name: Check Rust code
         run: |
