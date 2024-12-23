@@ -3,7 +3,7 @@ import Modal from '@@/utils/Modal';
 
 import { create } from "zustand";
 import { useEffect, useState } from "react";
-import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo } from "@/core";
+import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo, emitter } from "@/core";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
@@ -166,6 +166,11 @@ function EnvList() {
         });
     }
 
+    const btnClose = () => {
+        setAdding(false);
+        setBuffer("");
+    }
+
     return (
         <>
             <div className="btn-group">
@@ -181,20 +186,36 @@ function EnvList() {
                     </div>
                 ))}
             </div>
-            <Modal title='添加新变量' isOpen={isAdding} onClose={() => setAdding(false)}>
-                <input
-                    onChange={(e) => setBuffer(e.currentTarget.value)}
-                    placeholder="Enter value"
-                    value={buffer}
-                />
-                <button onClick={() => {
-                    addVariable(buffer);
-                    setAdding(false);
-                    setBuffer("");
-                }}>+</button>
+            <Modal title='添加新变量' isOpen={isAdding} onClose={btnClose}>
+                <div className="btn-group">
+                    <input
+                        onChange={(e) => setBuffer(e.currentTarget.value)}
+                        placeholder="Enter value"
+                        value={buffer}
+                    />
+                    <button onClick={() => {
+                        if (isEnglishAndNumbers(buffer)) {
+                            addVariable(buffer);
+                            setAdding(false);
+                            setBuffer("");
+                        } else {
+                            emitter.emit("notification", {
+                                color: "error",
+                                timestamp: Date.now(),
+                                title: "变量不完全是数字和英文",
+                                message: "将会导致操作系统不可预测的行为，不建议这样做，如果您必须如此，请使用操作系统自带的工具手动修改"
+                            } satisfies INotification);
+                        }
+                    }}><Checkmark /></button>
+                </div>
             </Modal>
         </>
     )
+}
+
+function isEnglishAndNumbers(str: string) {
+    const regex = /^[a-zA-Z0-9]+$/;
+    return regex.test(str);
 }
 
 function Control() {
@@ -253,7 +274,10 @@ function ValueList() {
     };
     const btnFlush = async () => await flush();
     const btnRefresh = () => window.location.reload();
-    const btnUndo = async () => await undo();
+    const btnUndo = async () => {
+        await undo();
+        setEditValIndex(-1);
+    };
 
     const btnOrder = (direction: "up" | "down") => {
         if (direction === "up" && curEditValIndex === 0) return;
@@ -347,6 +371,7 @@ function ValueList() {
 
 import { Checkmark12Filled, Document16Filled, Delete16Filled, ArrowUp12Filled, ArrowDown12Filled } from '@ricons/fluent'
 import { Icon } from '@ricons/utils'
+import { INotification } from "@/components/utils/Notification";
 
 function Checkmark() {
     return <Icon size="24"><Checkmark12Filled /></Icon>

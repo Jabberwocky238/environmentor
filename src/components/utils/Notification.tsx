@@ -9,35 +9,25 @@ export interface INotification {
     message: string;
 }
 
-function NotificationItem(props: { notification: INotification }) {
-    const { notification: n } = props;
-
-    const Type = () => {
-        switch (n.color) {
-            case 'success':
-                return <span style={{ color: 'lightgreen' }}>Success</span>;
-            case 'error':
-                return <span style={{ color: 'red' }}>Error</span>;
-            case 'warning':
-                return <span style={{ color: 'orange' }}>Warning</span>;
-            case 'info':
-                return <span style={{ color: 'white' }}>Info</span>;
-            default:
-                return <span style={{ color: 'white' }}>Info</span>
-        }
+const Type = (props: { color: string }) => {
+    const color = props.color;
+    switch (color) {
+        case 'success':
+            return <span style={{ color: 'lightgreen' }}>Success</span>;
+        case 'error':
+            return <span style={{ color: 'red' }}>Error</span>;
+        case 'warning':
+            return <span style={{ color: 'orange' }}>Warning</span>;
+        case 'info':
+            return <span style={{ color: 'white' }}>Info</span>;
+        default:
+            return <span style={{ color: 'white' }}>Info</span>
     }
-
-    return (
-        <div key={`${n.title}${n.timestamp}`} className="notification-item">
-            <div className="notification-title"><Type /> {n.title}</div>
-            <div className="notification-message">{n.message}</div>
-        </div>
-    );
 }
 
 export default function Notification() {
     const [notifications, setNotifications] = useState<INotification[]>([]);
-    const [notificationCount, setNotificationCount] = useState(0);
+    const [handlers, setHandlers] = useState<NodeJS.Timeout[]>([]);
 
     useEffect(() => {
         emitter.on("notification", (n: any) => {
@@ -50,11 +40,12 @@ export default function Notification() {
             //     message: 'This is a notification'
             // };
             setNotifications((notifications) => [...notifications, notification]);
-            setNotificationCount((count) => count + 1);
-            setTimeout(() => {
+
+            const handler = setTimeout(() => {
                 setNotifications((notifications) => notifications.slice(1));
-                setNotificationCount((count) => count - 1);
-            }, 1000);
+                setHandlers((handlers) => handlers.slice(1));
+            }, 3000);
+            setHandlers([...handlers, handler]);
         })
         return () => {
             emitter.off("notification");
@@ -63,8 +54,19 @@ export default function Notification() {
 
     return (
         <div className="notification">
-            {notifications.map((n) => (
-                <NotificationItem notification={n} />
+            {notifications.map((n, i) => (
+                <div key={`${n.title}${n.timestamp}`} className="notification-item">
+                    <div className="notification-titlebar">
+                        <Type color={n.color} />
+                        <button onClick={() => {
+                            clearTimeout(handlers[i]);
+                            setNotifications((notifications) => notifications.filter((_, index) => index !== i));
+                            setHandlers((handlers) => handlers.filter((_, index) => index !== i));
+                        }}>x</button>
+                    </div>
+                    {n.title && <div className="notification-title">{n.title}</div>}
+                    <div className="notification-message">{n.message}</div>
+                </div>
             ))}
         </div>
     );

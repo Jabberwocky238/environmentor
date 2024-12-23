@@ -24,9 +24,14 @@
     border-radius: var(--border-radius-general);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 
+    .notification-titlebar {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+
     .notification-title {
-        font-size: 1.2rem;
-        font-weight: bold;
+        font-size: 1.25rem;
         color: var(--light);
     }
 

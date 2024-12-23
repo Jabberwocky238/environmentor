@@ -79,16 +79,16 @@ impl AppState {
                 Ok(format!("Undo Task: 恢复 '{}'", log.variable))
             },
             TaskLogData::AppendValue(log) => {
-                Ok(format!("Undo Task: 重新删除 '{}'", log.variable))
+                Ok(format!("Undo Task: 重新删除变量 '{}' 中的 '{}", log.variable, log.value))
             },
             TaskLogData::DeleteValue(log) => {
-                Ok(format!("Undo Task: 恢复变量 '{}' 中的 ''{}", log.variable, log.value))
+                Ok(format!("Undo Task: 恢复变量 '{}' 中的 '{}'", log.variable, log.value))
             },
             TaskLogData::ModifyValue(log) => {
                 Ok(format!("Undo Task: 恢复值 '{}' 为 '{}'", log.new_value, log.old_value))
             },
             TaskLogData::ReorderValue(log) => {
-                Ok(format!("Undo Task: 恢复值 '{}' 的排序", log.variable))
+                Ok(format!("Undo Task: 恢复变量 '{}' 的排序", log.variable))
             },
         }
     }

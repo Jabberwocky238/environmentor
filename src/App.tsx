@@ -36,7 +36,6 @@ function App() {
 
   return (
     <>
-      <Notification />
       <div className="tab">
         {routes.map((r) => (
           <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
@@ -53,6 +52,7 @@ function App() {
           </Route>
         </Switch>
       </div>
+      <Notification />
     </>
   );
 }

@@ -91,7 +91,7 @@ button {
         flex-grow: 1;
     }
 
-    button:first-child {
+    *:first-child {
         border-top-left-radius: var(--border-radius-general);
         /* 左上角圆角 */
         border-top-right-radius: 0;
@@ -102,7 +102,7 @@ button {
         /* 左下角圆角 */
     }
 
-    button:last-child {
+    *:last-child {
         border-top-left-radius: 0;
         /* 左上角圆角 */
         border-top-right-radius: var(--border-radius-general);
