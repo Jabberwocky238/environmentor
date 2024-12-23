@@ -36,7 +36,7 @@ jobs:
           rustup component add clippy
           rustup component add rustfmt
           # Install JavaScript dependencies
-          yarn install --frozen-lockfile
+          yarn install --frozen-lockfile --registry https://registry.npm.taobao.org
 
       - name: Check Rust code
         run: |
