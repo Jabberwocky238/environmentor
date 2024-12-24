@@ -5,6 +5,8 @@ import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo, emitter } from "@/core";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
+import { INotification } from "@@/utils/Notification";
+import { Checkmark, Delete, Down, FromFS, Up } from "@@/utils/Icons";
 
 type SyncState = "SYNCED" | "NOT_SYNCED" | "SYNCING";
 interface IStore {
@@ -201,7 +203,6 @@ function EnvList() {
                         } else {
                             emitter.emit("notification", {
                                 color: "error",
-                                timestamp: Date.now(),
                                 title: "变量不完全是数字和英文",
                                 message: "将会导致操作系统不可预测的行为，不建议这样做，如果您必须如此，请使用操作系统自带的工具手动修改"
                             } satisfies INotification);
@@ -221,6 +222,19 @@ function isEnglishAndNumbers(str: string) {
 function Control() {
     const [stateDom, setStateDom] = useState<React.ReactNode>(<StateClean />);
     const { syncState, currentVariable } = useStore();
+
+    function StateClean() {
+        return <strong style={{ color: 'green' }}>已同步</strong>
+    }
+    function StateNotSync() {
+        return <strong style={{ color: 'orange' }}>未同步</strong>
+    }
+    function StateSyncing() {
+        return <strong style={{ color: 'skyblue' }}>同步中</strong>
+    }
+    function StateERROR() {
+        return <strong style={{ color: 'red' }}>ERROR</strong>
+    }
 
     useEffect(() => {
         if (syncState === "SYNCED") {
@@ -335,7 +349,9 @@ function ValueList() {
                             onClick={() => {
                                 setEditValIndex(i);
                                 setBuffer(v);
-                            }}>{v}</div>
+                            }}>
+                            <p>{v}</p>
+                        </div>
 
                         <div className="item editing"
                             style={{ display: i === curEditValIndex ? "flex" : "none" }}>
@@ -369,40 +385,6 @@ function ValueList() {
     )
 }
 
-import { Checkmark12Filled, Document16Filled, Delete16Filled, ArrowUp12Filled, ArrowDown12Filled } from '@ricons/fluent'
-import { Icon } from '@ricons/utils'
-import { INotification } from "@/components/utils/Notification";
-
-function Checkmark() {
-    return <Icon size="24"><Checkmark12Filled /></Icon>
-}
-function FromFS() {
-    return <Icon size="24"><Document16Filled /></Icon>
-}
-function Delete() {
-    return <Icon size="24"><Delete16Filled /></Icon>
-}
-function Up() {
-    return <Icon size="24"><ArrowUp12Filled /></Icon>
-}
-function Down() {
-    return <Icon size="24"><ArrowDown12Filled /></Icon>
-}
-function StateClean() {
-    return <strong style={{ color: 'green' }}>已同步</strong>
-}
-
-function StateNotSync() {
-    return <strong style={{ color: 'orange' }}>未同步</strong>
-}
-
-function StateSyncing() {
-    return <strong style={{ color: 'skyblue' }}>同步中</strong>
-}
-
-function StateERROR() {
-    return <strong style={{ color: 'red' }}>ERROR</strong>
-}
 
 
 

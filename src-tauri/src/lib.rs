@@ -1,5 +1,7 @@
 mod core;
 mod task;
+mod setting;
+mod plugin;
 
 use core::AppState;
 use core::EnvHashMap;

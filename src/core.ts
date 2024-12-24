@@ -1,7 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import mitt from "mitt";
+import { INotification } from "./components/utils/Notification";
 
-const emitter = mitt();
+interface IEventType {
+    "notification": INotification,
+}
+
+type IEmitter = {
+    [K in keyof IEventType]: IEventType[K];
+};
+
+const emitter = mitt<IEmitter>();
 type EnvHashMap = { [key: string]: string[] };
 type ReceivedData = { env: EnvHashMap, dirty: boolean };
 

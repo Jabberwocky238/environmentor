@@ -8,6 +8,7 @@ import { Link, Route, Switch } from "wouter";
 import { emitter } from "@/core";
 import { useEffect } from "react";
 import { event } from "@tauri-apps/api";
+import Setting from "./views/Setting";
 
 function backendEventResolver(n: { event: string, id: number, payload: any }) {
   switch (n.event) {
@@ -21,7 +22,7 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
 function App() {
   const routes = [
     { href: "/", title: 'Main' },
-    // { href: "/history", title: 'History' }
+    { href: "/setting", title: 'Setting' }
   ]
 
   useEffect(() => {
@@ -36,15 +37,18 @@ function App() {
 
   return (
     <>
-      {/* <div className="tab">
+      <div className="tab">
         {routes.map((r) => (
           <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
         ))}
-      </div> */}
+      </div>
       <div className="tab-content">
         <Switch>
           <Route path="/">
-            <Main></Main>
+            <Main />
+          </Route>
+          <Route path="/setting">
+            <Setting />
           </Route>
           {/* Default route in a switch */}
           <Route>

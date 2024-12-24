@@ -8,8 +8,6 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "dialog:default",
-    "dialog:default",
     "dialog:default"
   ]
 }

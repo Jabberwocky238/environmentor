@@ -29,7 +29,7 @@ impl AppState {
     pub fn flush(&mut self) -> Result<EnvHashMap, Box<dyn std::error::Error>> {
         let _tasks = self._since_last_flush_tasks();
         let new_env = TaskResolver::new(&self.cur_env, _tasks).forward();
-        let _ = UpdateResolver::new(self.cur_env.clone(), new_env).resolve();
+        let _ = UpdateResolver::new(&self.cur_env, &new_env).resolve();
 
         self.add_task(TaskLog::flush());
 
@@ -110,13 +110,13 @@ impl AppState {
 }
 
 // 处理环境变量更新操作
-struct UpdateResolver {
-    old_env: EnvHashMap,
-    new_env: EnvHashMap,
+struct UpdateResolver<'a> {
+    old_env: &'a EnvHashMap,
+    new_env: &'a EnvHashMap,
 }
 
-impl UpdateResolver {
-    pub fn new(old_env: EnvHashMap, new_env: EnvHashMap) -> Self {
+impl<'a> UpdateResolver<'a> {
+    pub fn new(old_env: &'a EnvHashMap, new_env: &'a EnvHashMap) -> Self {
         Self { old_env, new_env }
     }
     pub fn resolve(&self) {
@@ -133,27 +133,28 @@ impl UpdateResolver {
     }
 
     // 过滤出需要更新和删除的环境变量
-    fn _filter(&self) -> (EnvHashMap, Vec<String>) {
-        let mut updates = EnvHashMap::new();
+    fn _filter(&self) -> (Vec<&String>, Vec<&String>) {
+        let mut updates = vec![];
         let mut deletes = vec![];
 
         for (k, v) in self.new_env.iter() {
             if self.old_env.get(k) != Some(v) {
-                updates.insert(k.clone(), v.clone());
+                updates.push(k);
             }
         }
         for (k, _) in self.old_env.iter() {
             if self.new_env.get(k).is_none() {
-                deletes.push(k.clone());
+                deletes.push(k);
             }
         }
         (updates, deletes)
     }
 
     // 生成更新环境变量的任务字符串
-    fn _create_tasks(&self, updates: EnvHashMap, deletes: Vec<String>) -> Vec<String> {
+    fn _create_tasks(&self, updates: Vec<&String>, deletes: Vec<&String>) -> Vec<String> {
         let mut tasks = vec![];
-        for (k, v) in updates.iter() {
+        for k in updates.iter() {
+            let v = self.new_env.get(*k).unwrap();
             println!("update '{}': '{:?}'", k, v);
             // extra ; is needed to avoid empty string, or it will be removed
             tasks.push(format!(

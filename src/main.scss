@@ -34,8 +34,12 @@
             }
 
             .item {
+                box-sizing: border-box;
+                display: flex;
+                justify-content: space-between; // 分散对齐
+                align-items: center; // 垂直居中
+
                 width: 100%;
-                padding: 8px;
                 border-radius: var(--border-radius-general);
                 transition: border-color 0.25s;
                 border: 3px solid transparent;
@@ -44,15 +48,17 @@
                 &:hover {
                     border-color: var(--active);
                 }
+
+                strong, p, button {
+                    padding: 8px;
+                }
             }
 
             .editing {
-                display: flex;
-                padding: unset;
                 border: unset;
+                background-color: var(--deep-dark);
 
                 input {
-                    padding: 0.6em 1.2em;
                     flex-grow: 1;
                 }
             }
@@ -87,7 +93,12 @@ button {
     justify-content: space-between;
 
     input, button {
-        padding: 0.6em 1.2em;
+        padding: 8px;
+    }
+    input {
+        flex-grow: 10;
+    }
+    button {
         flex-grow: 1;
     }
 

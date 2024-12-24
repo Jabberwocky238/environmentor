@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import './notification.scss';
 import { emitter } from "@/core";
+import { EasyStorage } from "@/storage";
 
 export interface INotification {
     color: 'success' | 'error' | 'warning' | 'info';
-    timestamp: number;
     title?: string;
     message: string;
 }
@@ -29,22 +29,22 @@ export default function Notification() {
     const [notifications, setNotifications] = useState<INotification[]>([]);
     const [handlers, setHandlers] = useState<NodeJS.Timeout[]>([]);
 
-    useEffect(() => {
-        emitter.on("notification", (n: any) => {
-            const notification = n as INotification;
-            console.log("[Notification useEffect] notification", n);
-            // const notification: INotification = {
-            //     color: 'error',
-            //     timestamp: Date.now(),
-            //     title: 'Title',
-            //     message: 'This is a notification'
-            // };
-            setNotifications((notifications) => [...notifications, notification]);
+    const storage = new EasyStorage();
+    
+    const createTimeout = () => {
+        const time = parseInt(storage.get("toastTimeout"));
+        return setTimeout(() => {
+            setNotifications((notifications) => notifications.slice(1));
+            setHandlers((handlers) => handlers.slice(1));
+        }, time);
+    }
 
-            const handler = setTimeout(() => {
-                setNotifications((notifications) => notifications.slice(1));
-                setHandlers((handlers) => handlers.slice(1));
-            }, 3000);
+    useEffect(() => {
+        emitter.on("notification", (n) => {
+            console.log("[Notification useEffect] notification", n);
+            
+            const handler = createTimeout();
+            setNotifications((notifications) => [...notifications, n]);
             setHandlers([...handlers, handler]);
         })
         return () => {
@@ -55,7 +55,7 @@ export default function Notification() {
     return (
         <div className="notification">
             {notifications.map((n, i) => (
-                <div key={`${n.title}${n.timestamp}`} className="notification-item">
+                <div key={`${n.title}${Date.now()}`} className="notification-item">
                     <div className="notification-titlebar">
                         <Type color={n.color} />
                         <button onClick={() => {
