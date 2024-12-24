@@ -43,10 +43,6 @@ impl AppState {
         self.tasks.push(task);
     }
 
-    pub fn task_list(&self) -> Vec<TaskLog> {
-        self.tasks.clone()
-    }
-
     pub fn get_cur_env(&self) -> EnvHashMap {
         let _tasks = self._since_last_flush_tasks();
         let new_env = TaskResolver::new(&self.cur_env, _tasks).forward();

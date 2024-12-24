@@ -11,6 +11,8 @@ type IEmitter = {
 };
 
 const emitter = mitt<IEmitter>();
+
+
 type EnvHashMap = { [key: string]: string[] };
 type ReceivedData = { env: EnvHashMap, dirty: boolean };
 
@@ -22,6 +24,9 @@ async function receive_state(): Promise<ReceivedData> {
 }
 async function undo(): Promise<ReceivedData> {
     return invoke("undo")
+}
+async function create_window(): Promise<void> {
+    return invoke("create_window")
 }
 
 interface ITask {
@@ -52,5 +57,5 @@ const TaskAction: ITaskAction = {
 }
 
 
-export { flush, emitter, TaskAction, receive_state, undo };
+export { flush, emitter, TaskAction, receive_state, undo, create_window };
 export type { EnvHashMap, ReceivedData };

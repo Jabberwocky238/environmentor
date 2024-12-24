@@ -12,11 +12,17 @@
         font-size: large;
         font-weight: bold;
         text-align: center;
+
+        &:hover {
+            color: #24c8db; // 他原本的这个蓝特别鲜艳好看
+        }
     }
     
     a.tab-item-active  {
-        background-color: rgba(0, 0, 0, 0.5);
-        border-bottom: 4px solid var(--light-dark);
+        &:hover {
+            color: #24c8db; // 他原本的这个蓝特别鲜艳好看
+        }
+        color: salmon;
     }
 }
 

@@ -5,8 +5,8 @@ import Plugin from "@/views/Plugin";
 
 import Notification from "@@/utils/Notification";
 
-import "./App.css";
-import "./styles/App.scss";
+import "@/App.css";
+import "@/styles/App.scss";
 import { Link, Route, Switch } from "wouter";
 import { emitter } from "@/core";
 import { useEffect } from "react";
@@ -22,7 +22,7 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
   }
 }
 
-function App() {
+export default function() {
   const routes = [
     { href: "/", title: 'Main' },
     { href: "/plugin", title: 'Plugin' },
@@ -67,5 +67,3 @@ function App() {
     </>
   );
 }
-
-export default App;

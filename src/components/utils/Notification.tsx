@@ -58,6 +58,7 @@ export default function Notification() {
                 <div key={`${n.title}${Date.now()}`} className="notification-item">
                     <div className="notification-titlebar">
                         <Type color={n.color} />
+                        {new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString()}
                         <button onClick={() => {
                             clearTimeout(handlers[i]);
                             setNotifications((notifications) => notifications.filter((_, index) => index !== i));
