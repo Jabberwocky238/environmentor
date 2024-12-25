@@ -1,5 +1,4 @@
 mod core;
-mod plugin;
 mod task;
 
 use core::AppState;
@@ -106,16 +105,6 @@ fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Resu
     Ok(result)
 }
 
-#[tauri::command]
-async fn create_window(app: tauri::AppHandle) {
-    let webview_window = tauri::WebviewWindowBuilder::new(
-        &app,
-        "aaa",
-        tauri::WebviewUrl::App("plugin.html".into()),
-    )
-    .build()
-    .unwrap();
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -132,8 +121,7 @@ pub fn run() {
             flush,
             send_state,
             receive_state,
-            undo,
-            create_window
+            undo
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

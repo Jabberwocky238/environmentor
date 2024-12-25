@@ -1,0 +1,19 @@
+input,
+button,
+select {
+    outline: none;
+    background-color: transparent;
+    border: unset;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+a {
+    text-decoration: inherit;
+}
+
+p {
+    margin-block-start: 0;
+    margin-block-end: 0;
+}

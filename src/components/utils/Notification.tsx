@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import './notification.scss';
-import { emitter } from "@/core";
-import { EasyStorage } from "@/storage";
+import { emitter, EasyStorage } from "@/core";
 
 export interface INotification {
     color: 'success' | 'error' | 'warning' | 'info';

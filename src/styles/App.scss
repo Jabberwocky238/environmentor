@@ -14,15 +14,15 @@
         text-align: center;
 
         &:hover {
-            color: #24c8db; // 他原本的这个蓝特别鲜艳好看
+            color: var(--color-shine); // 他原本的这个蓝特别鲜艳好看
         }
     }
     
     a.tab-item-active  {
         &:hover {
-            color: #24c8db; // 他原本的这个蓝特别鲜艳好看
+            color: var(--color-shine); // 他原本的这个蓝特别鲜艳好看
         }
-        color: salmon;
+        color: var(--color-active);
     }
 }
 

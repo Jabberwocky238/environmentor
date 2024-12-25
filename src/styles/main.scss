@@ -1,126 +1,20 @@
-:root {
-    --deep-dark: #0f0f0f;
-    --dark: #1e1e1e;
-    --light-dark: #363636;
-    --active: #396cd8;
-    --bright: #f5f5f5;
-    
-    --border-radius-general: 8px;
-}
-
-.row {
-    height: 100%;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    background-color: var(--dark);
-
-    .col {
-        height: inherit;
-        padding: 12px;
-        width: var(--col-width);
-        display: flex;
-        flex-direction: column;
-
-        .list {
-            overflow: scroll;
-            flex-grow: 1; // fill the space if items are less than the height
-
-            border-radius: var(--border-radius-general);
-            background-color: var(--light-dark);
-
-            &::-webkit-scrollbar {
-                width: 0;
+.list {
+    .item {
+        &.active {
+            background-color: var(--color-active);
+        }
+        &.editing {
+            border: unset;
+            background-color: var(--color-dark);
+            
+            button {
+                border-radius: var(--radius-border);
+                background-color: inherit;
             }
-
-            .item {
-                box-sizing: border-box;
-                display: flex;
-                justify-content: space-between; // 分散对齐
-                align-items: center; // 垂直居中
-
-                width: 100%;
-                border-radius: var(--border-radius-general);
-                transition: border-color 0.25s;
-                border: 3px solid transparent;
-                cursor: pointer;
-
-                &:hover {
-                    border-color: var(--active);
-                }
-
-                strong, p, button {
-                    padding: 8px;
-                }
-            }
-
-            .editing {
-                border: unset;
-                background-color: var(--deep-dark);
-
-                input {
-                    flex-grow: 1;
-                }
-            }
-
-            .active {
-                background-color: var(--active);
+            input {
+                color: inherit;
+                flex-grow: 1;
             }
         }
-    }
-}
-
-
-button {
-    transition: border-color 0.25s;
-    border: 3px solid transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    &:hover {
-        border-color: var(--active);
-    }
-
-    &:disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
-    }
-}
-
-.btn-group {
-    display: flex;
-    justify-content: space-between;
-
-    input, button {
-        padding: 8px;
-    }
-    input {
-        flex-grow: 10;
-    }
-    button {
-        flex-grow: 1;
-    }
-
-    *:first-child {
-        border-top-left-radius: var(--border-radius-general);
-        /* 左上角圆角 */
-        border-top-right-radius: 0;
-        /* 右上角方形 */
-        border-bottom-right-radius: 0;
-        /* 右下角方形 */
-        border-bottom-left-radius: var(--border-radius-general);
-        /* 左下角圆角 */
-    }
-
-    *:last-child {
-        border-top-left-radius: 0;
-        /* 左上角圆角 */
-        border-top-right-radius: var(--border-radius-general);
-        /* 右上角方形 */
-        border-bottom-right-radius: var(--border-radius-general);
-        /* 右下角方形 */
-        border-bottom-left-radius: 0;
-        /* 左下角圆角 */
     }
 }

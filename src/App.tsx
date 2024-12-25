@@ -1,11 +1,10 @@
 
 import Main from "@/views/Main";
 import Setting from "@/views/Setting";
-import Plugin from "@/views/Plugin";
+import History from "@/views/History";
 
 import Notification from "@@/utils/Notification";
 
-import "./App.css";
 import "./styles/App.scss";
 import { Link, Route, Switch } from "wouter";
 import { emitter } from "@/core";
@@ -25,7 +24,7 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
 function App() {
   const routes = [
     { href: "/", title: 'Main' },
-    { href: "/plugin", title: 'Plugin' },
+    { href: "/History", title: 'History' },
     { href: "/setting", title: 'Setting' },
   ]
 
@@ -51,8 +50,8 @@ function App() {
           <Route path="/">
             <Main />
           </Route>
-          <Route path="/plugin">
-            <Plugin />
+          <Route path="/History">
+            <History />
           </Route>
           <Route path="/setting">
             <Setting />

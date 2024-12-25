@@ -1,5 +1,6 @@
 import type { EnvHashMap } from "@/core";
 import Modal from '@@/utils/Modal';
+import '@/styles/Main.scss';
 
 import { create } from "zustand";
 import { useEffect, useState } from "react";
