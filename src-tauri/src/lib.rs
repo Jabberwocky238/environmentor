@@ -1,5 +1,6 @@
 mod core;
 mod task;
+mod scanner;
 
 use core::AppState;
 use core::EnvHashMap;
@@ -48,13 +49,6 @@ fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri:
     state.lock().unwrap().add_task(task.into());
     Ok(())
 }
-
-// interface INotification {
-//     color: 'success' | 'error' | 'warning' | 'info';
-//     timestamp: number;
-//     title?: string;
-//     message: string;
-// }
 
 enum NotificationColor {
     Success,
