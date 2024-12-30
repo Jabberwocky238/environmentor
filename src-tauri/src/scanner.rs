@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 #[test]
 fn test_scan() {
     // scan();
-    // let s = multi_thread_walk().unwrap();
-    let s = single_thread_walk().unwrap();
+    let s = multi_thread_walk().unwrap();
+    // let s = single_thread_walk().unwrap();
     s.serialize("output.csv");
 }
 struct Storage {
@@ -41,6 +41,7 @@ impl Storage {
         let mut file = std::fs::File::options()
             .write(true)
             .truncate(true)
+            .create(true)
             .open(path)
             .unwrap();
         // sort the path
@@ -64,16 +65,12 @@ fn now() -> u64 {
         .as_secs()
 }
 
-const EXCLUDE_FILENAME: [&str; 4] = [
-    "$RECYCLE.BIN",
-    "System Volume Information",
-    "pagefile.sys",
-    "Config.Msi",
-];
 
 fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     let filename = path.to_str().unwrap().to_string();
     if filename.starts_with(".") {
+        return Ok(true);
+    } else if filename.ends_with("$RECYCLE.BIN") {
         return Ok(true);
     }
     Ok(false)
@@ -83,6 +80,7 @@ fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
 fn single_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
     let mut storage = Storage::new();
     let mut stack: Vec<PathBuf> = vec!["D:\\".into()];
+    storage.insert(&stack[0]);
 
     while let Some(path) = stack.pop() {
         if let Ok(entries) = fs::read_dir(&path) {
@@ -115,12 +113,16 @@ fn single_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
     Ok(storage)
 }
 
-fn multi_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
-    let storage = Arc::new(Mutex::new(Storage::new()));
+const THREADS: usize = 4;
 
-    const THREADS: usize = 4;
+fn multi_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
+    let root: PathBuf = "D:\\".into();
+    let mut storage = Storage::new();
+    storage.insert(&root);
+
     let q = ArrayQueue::<PathBuf>::new(200);
-    let _ = q.push("D:\\".into());
+    let _ = q.push(root);
+    let storage = Arc::new(Mutex::new(storage));
 
     scope(|scope| {
         for _ in 0..THREADS {
@@ -133,12 +135,17 @@ fn multi_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
                                     let path = entry.path();
                                     // 如果是目录，则递归遍历
                                     storage.lock().unwrap().insert(&path);
-                                    if path.is_dir() {
+
+                                    if treat_as_file(&path).unwrap() {
+                                        let _size = pure_walk(&path).unwrap();
+                                        storage.lock().unwrap().accumulate(&path, _size);
+                                    } else if path.is_dir() {
                                         // println!("Directory: {:?}", path);
                                         let _ = q.push(path.to_owned());
                                     } else {
                                         // println!("File: {:?}", path);
-                                        storage.lock().unwrap().accumulate(&path, 1);
+                                        let _size = fs::metadata(&path).unwrap().len();
+                                        storage.lock().unwrap().accumulate(&path, _size);
                                     }
                                 }
                                 Err(e) => println!("Failed to read entry: {}", e),
