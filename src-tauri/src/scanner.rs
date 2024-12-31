@@ -1,14 +1,14 @@
-use crossbeam::queue::ArrayQueue;
+use crossbeam::queue::{ArrayQueue, SegQueue};
 use crossbeam::scope;
+use dashmap::DashMap;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[test]
 fn test_scan() {
-    // scan();
     let s = multi_thread_walk().unwrap();
     // let s = single_thread_walk().unwrap();
     s.serialize("output.csv");
@@ -23,17 +23,21 @@ impl Storage {
         path_to_size.reserve(50_0000);
         Self { path_to_size }
     }
-    pub fn insert(&mut self, path: &PathBuf) {
-        let metadata = fs::metadata(path).unwrap();
-        let path_string = path.to_str().unwrap().to_string();
-        self.path_to_size.insert(path_string, metadata.len());
-    }
     pub fn accumulate(&mut self, path: &PathBuf, add: u64) {
-        let parent = path.parent().unwrap();
+        let parent = match path.parent() {
+            Some(p) => p,
+            None => return, // root has no parent
+        };
         let path_string = parent.to_str().unwrap().to_string();
         self.path_to_size
-            .entry(path_string)
-            .and_modify(|e| *e += add);
+            .entry(path_string.to_owned())
+            .and_modify(|e| *e += add)
+            .or_insert_with(|| {
+                let metadata = fs::metadata(path_string).unwrap();
+                add + metadata.len()
+            });
+        // recursive call parent to accumulate the size
+        self.accumulate(&parent.to_path_buf(), add);
     }
 
     pub fn serialize(&self, path: &str) {
@@ -47,7 +51,6 @@ impl Storage {
         // sort the path
         let mut paths: Vec<&String> = self.path_to_size.keys().collect();
         paths.sort();
-
         // write to the file
         for k in paths {
             let v = self.path_to_size.get(k).unwrap();
@@ -65,14 +68,14 @@ fn now() -> u64 {
         .as_secs()
 }
 
-
 fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     let filename = path.to_str().unwrap().to_string();
     if filename.starts_with(".") {
         return Ok(true);
-    } else if filename.ends_with("$RECYCLE.BIN") {
-        return Ok(true);
     }
+    // if filename.ends_with("$RECYCLE.BIN") {
+    //     return Ok(true);
+    // }
     Ok(false)
 }
 
@@ -80,7 +83,6 @@ fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
 fn single_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
     let mut storage = Storage::new();
     let mut stack: Vec<PathBuf> = vec!["D:\\".into()];
-    storage.insert(&stack[0]);
 
     while let Some(path) = stack.pop() {
         if let Ok(entries) = fs::read_dir(&path) {
@@ -89,19 +91,16 @@ fn single_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
                     Ok(entry) => {
                         let path = entry.path();
                         // 如果是目录，则递归遍历
-                        storage.insert(&path);
-
-                        if treat_as_file(&path)? {
-                            let _size = pure_walk(&path)?;
-                            storage.accumulate(&path, _size);
-                        } else if path.is_dir() {
-                            // println!("Directory: {:?}", path);
+                        if path.is_dir() {
                             stack.push(path.to_owned());
-                        } else {
-                            // println!("File: {:?}", path);
-                            let _size = fs::metadata(&path)?.len();
-                            storage.accumulate(&path, _size);
                         }
+
+                        let _size = if treat_as_file(&path)? {
+                            pure_walk(&path)?
+                        } else {
+                            fs::metadata(&path)?.len()
+                        };
+                        storage.accumulate(&path, _size);
                     }
                     Err(e) => println!("Failed to read entry: {}", e),
                 }
@@ -113,40 +112,88 @@ fn single_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
     Ok(storage)
 }
 
-const THREADS: usize = 4;
+struct _RowLockStorage;
+impl _RowLockStorage {
+    pub fn into_inner(map: DashMap<String, u64>) -> Result<Storage, Box<dyn std::error::Error>> {
+        let mut path_to_size = HashMap::new();
+        for (k, v) in map {
+            path_to_size.insert(k, v);
+        }
+        Ok(Storage { path_to_size })
+    }
+    pub fn accumulate(map: Arc<DashMap<String, u64>>, path: &PathBuf, add: u64) {
+        let parent = match path.parent() {
+            Some(p) => p,
+            None => return, // root has no parent
+        };
+        let path_string = parent.to_str().unwrap().to_string();
+        map.entry(path_string.to_owned())
+            .and_modify(|e| *e += add)
+            .or_insert_with(|| {
+                let metadata = fs::metadata(path_string).unwrap();
+                add + metadata.len()
+            });
+        // recursive call parent to accumulate the size
+        _RowLockStorage::accumulate(map, &parent.to_path_buf(), add);
+    }
+}
 
 fn multi_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
+    const THREADS: usize = 4;
     let root: PathBuf = "D:\\".into();
-    let mut storage = Storage::new();
-    storage.insert(&root);
+    let row_lock_storage = Arc::new(DashMap::<String, u64>::new());
 
-    let q = ArrayQueue::<PathBuf>::new(200);
-    let _ = q.push(root);
-    let storage = Arc::new(Mutex::new(storage));
+    let stop = Arc::new(RwLock::new(vec![false; THREADS]));
+
+    let q_walk = SegQueue::new();
+    q_walk.push(root);
+    let q_walk = Arc::new(Mutex::new(q_walk));
 
     scope(|scope| {
-        for _ in 0..THREADS {
-            scope.spawn(|_| {
-                while let Some(path) = q.pop() {
+        for t_index in 0..THREADS {
+            let row_lock_storage = Arc::clone(&row_lock_storage);
+            let _q_walk = Arc::clone(&q_walk);
+            let stop = Arc::clone(&stop);
+
+            scope.spawn(move |_| {
+                loop {
+                    let path = match _q_walk.lock().unwrap().pop() {
+                        Some(p) => {
+                            if stop.read().unwrap()[t_index] {
+                                stop.write().unwrap()[t_index] = false;
+                            }
+                            p
+                        },
+                        None => {
+                            println!("Thread {} try stop", t_index);
+                            // if all decide to stop, then stop
+                            stop.write().unwrap()[t_index] = true;
+                            let all_stop = stop.read().unwrap().iter().all(|&x| x);
+                            if all_stop {
+                                return;
+                            } else {
+                                continue;
+                            }
+                        }
+                    };
+
+                    // println!("Thread {} start walk", t_index);
                     if let Ok(entries) = fs::read_dir(&path) {
                         for entry in entries {
                             match entry {
                                 Ok(entry) => {
                                     let path = entry.path();
-                                    // 如果是目录，则递归遍历
-                                    storage.lock().unwrap().insert(&path);
-
-                                    if treat_as_file(&path).unwrap() {
-                                        let _size = pure_walk(&path).unwrap();
-                                        storage.lock().unwrap().accumulate(&path, _size);
-                                    } else if path.is_dir() {
-                                        // println!("Directory: {:?}", path);
-                                        let _ = q.push(path.to_owned());
-                                    } else {
-                                        // println!("File: {:?}", path);
-                                        let _size = fs::metadata(&path).unwrap().len();
-                                        storage.lock().unwrap().accumulate(&path, _size);
+                                    if path.is_dir() {
+                                        _q_walk.lock().unwrap().push(path.to_owned());
                                     }
+
+                                    let _size = if treat_as_file(&path).unwrap() {
+                                        pure_walk(&path).unwrap()
+                                    } else {
+                                        // common file or directory
+                                        fs::metadata(&path).unwrap().len()
+                                    };
+                                    _RowLockStorage::accumulate(Arc::clone(&row_lock_storage), &path, _size);
                                 }
                                 Err(e) => println!("Failed to read entry: {}", e),
                             }
@@ -159,8 +206,9 @@ fn multi_thread_walk() -> Result<Storage, Box<dyn std::error::Error>> {
         }
     })
     .unwrap();
-    if let Some(storage) = Arc::try_unwrap(storage).ok() {
-        return Ok(storage.into_inner()?);
+    // transform the storage
+    if let Some(_map) = Arc::try_unwrap(row_lock_storage).ok() {
+        return Ok(_RowLockStorage::into_inner(_map)?);
     }
     unreachable!()
 }
