@@ -20,6 +20,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 crossbeam = "0.8"
 dashmap = "6.1.0"
+csv = "1.1"
+
 
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
