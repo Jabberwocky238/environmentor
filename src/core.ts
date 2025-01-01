@@ -68,15 +68,14 @@ const TaskAction: ITaskAction = {
 }
 
 type EnvHashMap = { [key: string]: string[] };
-type ReceivedData = { env: EnvHashMap, dirty: boolean };
 
-async function flush(): Promise<ReceivedData> {
+async function flush(): Promise<void> {
     return invoke("flush");
 }
-async function receive_state(): Promise<ReceivedData> {
+async function receive_state(): Promise<{ env: EnvHashMap, dirty: boolean }> {
     return invoke("send_state")
 }
-async function undo(): Promise<ReceivedData> {
+async function undo(): Promise<void> {
     return invoke("undo")
 }
 
@@ -88,9 +87,9 @@ interface TreeNode {
     is_dir: boolean;
     is_allow: boolean;
 }
-async function FST_get_children(abs_path: string): Promise<TreeNode[]> {
-    return invoke("FST_get_children", { abs_path });
+async function FST_get_children(absPath?: string): Promise<TreeNode[]> {
+    return invoke("FST_get_children", { absPath });
 }
 
-export { flush, TaskAction, receive_state, undo };
-export type { EnvHashMap, ReceivedData };
+export { flush, TaskAction, receive_state, undo, FST_get_children };
+export type { EnvHashMap };

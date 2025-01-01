@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
+import { FST_get_children as _FST_get_children } from '@/core';
 
 import '@/styles/FSTree.scss';
 
@@ -12,28 +13,30 @@ interface TreeNode {
     children?: TreeNode[];
 }
 
-function getTree(): TreeNode {
-    return {
-        name: 'root',
-        absPath: '/',
-        size: 0,
-        scripts_count: 0,
-        children: [],
-    }
+async function getChildren(path?: string): Promise<TreeNode[]> {
+    // console.log("getChildren", path);
+    const children = await _FST_get_children(path);
+    return children.map((child) => ({
+        name: child.name,
+        absPath: child.abs_path,
+        size: child.size,
+        scripts_count: child.scripts_count,
+    }));
 }
 
 interface IStore {
     tree: TreeNode[];
     chosen: TreeNode | null;
-    choose: (node: TreeNode) => void;
+    choose: (node: TreeNode) => Promise<void>;
 }
 
 const useStore = create<IStore>((set, get) => ({
-    tree: [getTree()],
+    tree: [],
     chosen: null,
-    choose: (node) => {
-        set((state) => { 
-            node.children = [getTree(), getTree(), getTree()];
+    choose: async (node) => {
+        const children = await getChildren(node.absPath);
+        set((state) => {
+            node.children = children;
             return { ...state, chosen: node }
         });
     },
@@ -62,12 +65,21 @@ function Details({ chosen }: { chosen: TreeNode }) {
         <div>
             <h2>{chosen.name}</h2>
             <p>{chosen.absPath}</p>
+            <p>{chosen.size} bytes</p>
+            <p>{chosen.size / 1024 / 1024} MB</p>
+            <p>{chosen.scripts_count} scripts</p>
         </div>
     );
 }
 
 export default function () {
     const { chosen, tree } = useStore();
+
+    useEffect(() => {
+        getChildren().then((children) => {
+            useStore.setState({ tree: children });
+        });
+    }, []);
 
     return (
         <div className="row">

@@ -22,74 +22,65 @@ fn test_scan() {
     s.dump("output.csv");
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Storage {
     path_map: HashMap<String, NodeRecord>,
+    pub is_inited: bool,
 }
 
-#[derive(Debug, Default)]
-struct NodeRecord {
-    size: u64,
-    last_scan: u64,
-    last_modified: u64,
-    has_envvar_count: u64,
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct NodeRecord {
+    pub size: u64,
+    pub last_scan: u64,
+    pub last_modified: u64,
+    pub has_envvar_count: u64,
 }
 type TyNodeRecord = (String, u64, u64, u64, u64);
 
 impl Storage {
-    fn dump(&self, path: &str) {
-        let mut keys = self.path_map.keys().cloned().collect::<Vec<String>>();
-        keys.sort();
-        let file = fs::File::options()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(path)
-            .unwrap();
-        let mut wtr = csv::Writer::from_writer(file);
-        for k in keys {
-            let v = self.path_map.get(&k).unwrap();
-            wtr.write_record(&[
-                k,
-                v.size.to_string(),
-                v.last_scan.to_string(),
-                v.last_modified.to_string(),
-                v.has_envvar_count.to_string(),
-            ])
-            .unwrap();
-        }
-    }
-    fn load(path: &str) -> Self {
-        if fs::metadata(path).is_err() {
-            return Self::default();
-        }
-        let m: HashMap<String, NodeRecord> = csv::Reader::from_path(path)
-            .unwrap()
-            .deserialize()
-            .map(|r: Result<TyNodeRecord, csv::Error>| {
-                let (k, v1, v2, v3, v4) = r.unwrap();
-                let v = NodeRecord {
-                    size: v1,
-                    last_scan: v2,
-                    last_modified: v3,
-                    has_envvar_count: v4,
-                };
-                (k, v)
-            })
-            .collect();
-        Self { path_map: m }
-    }
-}
-
-impl Storage {
     pub fn update(&mut self) {
         // remove out-dated records
-        self.tree_shaking();
+        self._tree_shaking();
         // update current storage
-        self.scna_with_cache();
+        self._scna_with_cache();
     }
 
-    fn tree_shaking(&mut self) {
+    /// return (abs_path, node_info, is_allowed)
+    pub fn children(&self, abs_path: Option<&str>) -> Vec<(PathBuf, NodeRecord, bool)> {
+        if let None = abs_path {
+            dbg!("Storage children: None");
+            return get_drives()
+                .iter()
+                .map(|d| (d.to_owned(), NodeRecord::default(), true))
+                .collect();
+        }
+        let abs_path = PathBuf::from(abs_path.unwrap());
+        let mut children = vec![];
+        match fs::read_dir(&abs_path) {
+            Ok(entries) => {
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            let path = entry.path();
+                            let record = self.path_map.get(&path.to_str().unwrap().to_string());
+                            let record = match record {
+                                Some(r) => r.clone(),
+                                None => NodeRecord::default(),
+                            };
+                            children.push((path, record.clone(), true));
+                        }
+                        Err(_) => {
+                            children.push((PathBuf::default(), NodeRecord::default(), false));
+                        },
+                    }
+                }
+            }
+            Err(e) => println!("Failed to open directory: {:?}", &abs_path),
+        }
+        children
+    }
+
+    fn _tree_shaking(&mut self) {
         let keys = self.path_map.keys().cloned().collect::<Vec<String>>();
         let mut modified_cnt = 0;
         let mut disappear_cnt = 0;
@@ -112,7 +103,7 @@ impl Storage {
         );
     }
 
-    fn scna_with_cache(&mut self) {
+    fn _scna_with_cache(&mut self) {
         let time1 = now();
         // let s = multi_thread_walk().unwrap();
         let s = single_thread_walk(Some(&self.path_map)).unwrap();
@@ -124,6 +115,59 @@ impl Storage {
             diff as f64 / 60 as f64
         );
         self.path_map = s.path_map;
+    }
+
+    pub fn dump(&self, path: &str) {
+        let mut keys = self.path_map.keys().cloned().collect::<Vec<String>>();
+        keys.sort();
+        let file = fs::File::options()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)
+            .unwrap();
+        let mut wtr = csv::Writer::from_writer(file);
+        for k in keys {
+            let v = self.path_map.get(&k).unwrap();
+            wtr.write_record(&[
+                k,
+                v.size.to_string(),
+                v.last_scan.to_string(),
+                v.last_modified.to_string(),
+                v.has_envvar_count.to_string(),
+            ])
+            .unwrap();
+        }
+    }
+    pub fn load(path: &str) -> Self {
+        if fs::metadata(path).is_err() {
+            println!("Storage load: not found");
+            return Self {
+                path_map: HashMap::default(),
+                is_inited: false,
+            };
+        }
+        
+        let m: HashMap<String, NodeRecord> = csv::Reader::from_path(path)
+            .unwrap()
+            .deserialize()
+            .map(|r: Result<TyNodeRecord, csv::Error>| {
+                let (k, v1, v2, v3, v4) = r.unwrap();
+                let v = NodeRecord {
+                    size: v1,
+                    last_scan: v2,
+                    last_modified: v3,
+                    has_envvar_count: v4,
+                };
+                (k, v)
+            })
+            .collect();
+        
+        println!("Storage load: found {} records", m.len());
+        Self {
+            path_map: m,
+            is_inited: true,
+        }
     }
 }
 
@@ -155,7 +199,10 @@ impl _Storage {
                 },
             );
         }
-        Storage { path_map }
+        Storage {
+            path_map,
+            is_inited: true,
+        }
     }
     pub fn load_cache(&mut self, cache: &HashMap<String, NodeRecord>) {
         for (k, v) in cache {
@@ -399,4 +446,25 @@ fn pure_walk(path: &PathBuf) -> Result<u64, Box<dyn std::error::Error>> {
         }
     }
     Ok(size)
+}
+
+fn get_drives() -> Vec<PathBuf> {
+    let mut drives = vec![];
+    for i in b'C'..=b'Z' {
+        let drive = format!("{}:\\", i as char);
+        if fs::metadata(&drive).is_ok() {
+            drives.push(drive.into());
+        } else {
+            break;
+        }
+    }
+    drives
+}
+
+#[test]
+fn test_get_drives() {
+    let drives = get_drives();
+    for d in drives {
+        println!("{:?}", d);
+    }
 }

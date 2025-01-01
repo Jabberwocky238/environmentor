@@ -42,11 +42,13 @@ const useStore = create<IStore>((set, get) => ({
     },
     flush: async () => {
         set({ syncState: "SYNCING" });
-        let { env, dirty } = await _flush();
+        await _flush();
+        let { env, dirty } = await _receive_state();
         set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
     },
     undo: async () => {
-        let { env, dirty } = await _undo();
+        await _undo();
+        let { env, dirty } = await _receive_state();
         set((state) => ({ ...state, envs: env, syncState: dirty ? 'NOT_SYNCED' : 'SYNCED' }));
     },
 
