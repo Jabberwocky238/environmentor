@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::os::windows::process::CommandExt as _;
-use std::process::Command;
+use std::future::Future;
 use std::result::Result;
 use std::u8;
-use tauri::App;
 
-use crate::scanner::Storage;
+use crate::scanner::{Storage, StorageUpdater};
 use crate::task::{TaskLog, TaskLogData, TaskManager, TaskResolver};
 
 type EnvHashMap = HashMap<String, Vec<String>>;
@@ -58,15 +56,20 @@ impl Notification {
     }
 }
 
-pub trait AppAction {
+pub trait AppTaskAction {
     fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>>;
     fn send_state(&self) -> SendState;
     fn receive_state(&mut self, task: TaskLogData) -> ();
     fn undo(&mut self) -> Notification;
-    
-    fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode>;
-    async fn FST_scan(&mut self) -> ();
 }
+
+pub trait AppFSTAction {
+    fn children(&self, abs_path: Option<&str>) -> Vec<TreeNode>;
+    fn state(&mut self, option: Option<bool>) -> (bool, Notification);
+    fn generater(&self) -> StorageUpdater;
+    fn replace(&mut self, s: Storage); 
+}
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppState {
@@ -82,12 +85,11 @@ impl AppState {
         Self { tm, s: Storage::load("output.csv") }
     } 
     pub fn exit(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.s.dump("output.csv");
         Ok(())
     }
 }
 
-impl AppAction for AppState {
+impl AppTaskAction for AppState {
     fn flush(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.tm.flush()?;
         Ok(())
@@ -110,8 +112,11 @@ impl AppAction for AppState {
         };
         notification
     }
+}
 
-    fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode> {
+
+impl AppFSTAction for AppState {
+    fn children(&self, abs_path: Option<&str>) -> Vec<TreeNode> {
         let result = self.s.children(abs_path);
         result.into_iter().map(|(abspath, node)| {
             let abs_path = abspath.to_str().unwrap().to_string();
@@ -130,7 +135,29 @@ impl AppAction for AppState {
         }).collect()
     }
 
-    async fn FST_scan(&mut self) -> () {
-        self.s.update().await;
+    fn state(&mut self, option: Option<bool>) -> (bool, Notification) {
+        if let Some(option) = option {
+            self.s.updating = option;
+            if option {
+                return (option, Notification::info("Scanning started"));
+            } else {
+                return (option, Notification::success("Scanning complete"));
+            }
+        }
+        let notification = if self.s.updating {
+            Notification::warning("Scanning in progress, do not interrupt")
+        } else {
+            Notification::info("No Scanning planned")
+        };
+        (self.s.updating, notification)
+    }
+
+    fn generater(&self) -> StorageUpdater {
+        let updater: StorageUpdater = self.s.clone().into();
+        updater
+    }
+
+    fn replace(&mut self, s: Storage) {
+        self.s.replace(s);
     }
 }

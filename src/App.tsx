@@ -19,7 +19,6 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
 
 import Main from "@/views/Main";
 import Setting from "@/views/Setting";
-import History from "@/views/History";
 import FSTree from "@/views/FSTree";
 
 function App() {
@@ -38,14 +37,12 @@ function App() {
     <>
       <div className="tab">
         <Link className={_active} href="/">Main</Link>
-        {/* <Link className={_active} href="/History">History</Link> */}
         <Link className={_active} href="/FSTree">FSTree</Link>
         <Link className={_active} href="/Setting">Setting</Link>
       </div>
       <div className="tab-content">
         <Switch>
           <Route path="/"><Main /></Route>
-          {/* <Route path="/History"><History /></Route> */}
           <Route path="/FSTree"><FSTree /></Route>
           <Route path="/Setting"><Setting /></Route>
           {/* Default route in a switch */}

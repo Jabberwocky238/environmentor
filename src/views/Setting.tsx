@@ -1,5 +1,4 @@
-import { create } from "zustand";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { flush as _flush, EasyStorage, receive_state as _receive_state, undo as _undo, emitter } from "@/core";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
 import { Checkmark } from "@@/utils/Icons";

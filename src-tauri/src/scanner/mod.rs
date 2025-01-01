@@ -1,23 +1,22 @@
+mod persist;
 mod utils;
 mod walk;
-mod persist;
 
 use persist::Persist;
 use serde::{Deserialize, Serialize};
+use tauri::image;
 use std::collections::HashMap;
 use std::fs;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 
 #[tokio::test]
 async fn test_scan() {
-    let mut s1 = Storage::load("output.csv");
-    s1.update().await;
+    let s1 = Storage::load("output.csv");
+    let mut s2 = StorageUpdater::from(s1);
+    s2.resolve();
+    let s1: Storage = s2.into();
     s1.dump("output.csv");
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Storage {
-    path_map: HashMap<String, NodeRecord>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -38,21 +37,19 @@ impl NodeRecord {
     }
 }
 
-impl Storage {
-    pub async fn update(&mut self) {
-        println!("[Storage] update start");
-        let time1 = utils::now();
-        // remove out-dated records
-        self._tree_shaking();
-        let time2 = utils::now();
-        println!("[Storage] tree_shaking: {}s", time2 - time1);
-        println!("[Storage] scan_with_cache start");
-        // update current storage
-        self._scna_with_cache();
-        let time3 = utils::now();
-        println!("[Storage] scan_with_cache: {}s", time3 - time2);
-    }
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct Storage {
+    path_map: HashMap<String, NodeRecord>,
+    pub updating: bool,
+}
 
+impl Storage {
+    pub fn dump(&self, path: &str) {
+        self._dump(path);
+    }
+    pub fn load(path: &str) -> Self {
+        Self::_load(path)
+    }
     /// return (abs_path, node_info, is_allowed)
     pub fn children(&self, abs_path: Option<&str>) -> Vec<(PathBuf, NodeRecord)> {
         if let None = abs_path {
@@ -84,6 +81,41 @@ impl Storage {
             }
         }
         children
+    }
+    pub fn replace(&mut self, s: Storage) {
+        self.path_map = s.path_map;
+    }
+}
+
+pub struct StorageUpdater {
+    path_map: HashMap<String, NodeRecord>,
+}
+
+impl From<Storage> for StorageUpdater {
+    fn from(s: Storage) -> Self {
+        Self { path_map: s.path_map }
+    }
+}
+
+impl Into<Storage> for StorageUpdater {
+    fn into(self) -> Storage {
+        Storage { path_map: self.path_map, updating: false }
+    }
+}
+
+impl StorageUpdater {
+    pub fn resolve(&mut self) {
+        println!("[StorageUpdater] update start");
+        let time1 = utils::now();
+        // remove out-dated records
+        self._tree_shaking();
+        let time2 = utils::now();
+        println!("[StorageUpdater] tree_shaking: {}s", time2 - time1);
+        println!("[StorageUpdater] scan_with_cache start");
+        // update current storage
+        self._scna_with_cache();
+        let time3 = utils::now();
+        println!("[StorageUpdater] scan_with_cache: {}s", time3 - time2);
     }
 
     fn _tree_shaking(&mut self) {
@@ -141,7 +173,7 @@ impl Storage {
         }
 
         println!(
-            "[Storage] tree_shaking: modified: {}, disappear: {}",
+            "[StorageUpdater] tree_shaking: modified: {}, disappear: {}",
             modified_cnt, disappear_cnt
         );
     }
@@ -151,12 +183,4 @@ impl Storage {
         let s = walk::single_thread_walk(Some(&self.path_map)).unwrap();
         self.path_map = s.path_map;
     }
-
-    pub fn dump(&self, path: &str) {
-        self._dump(path);
-    }
-    pub fn load(path: &str) -> Self {
-        Self::_load(path)
-    }
 }
-

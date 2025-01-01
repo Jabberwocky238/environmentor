@@ -2,10 +2,13 @@ mod app;
 mod scanner;
 mod task;
 
-use app::AppAction;
+use app::AppFSTAction;
+use app::AppTaskAction;
 use app::AppState;
 use app::SendState;
 use app::TreeNode;
+use scanner::Storage;
+use tauri::http::response;
 use tauri::WindowEvent;
 use tauri::Wry;
 
@@ -54,16 +57,46 @@ async fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri
 }
 
 #[tauri::command]
-async fn FST_get_children(state: State<'_, Mutex<AppState>>, abs_path: Option<&str>) -> tauri::Result<Vec<TreeNode>> {
-    dbg!("FST_get_children");
-    let result = state.lock().unwrap().FST_get(abs_path);
+async fn FST_children(state: State<'_, Mutex<AppState>>, abs_path: Option<&str>) -> tauri::Result<Vec<TreeNode>> {
+    dbg!("FST_children");
+    let result = state.lock().unwrap().children(abs_path);
     Ok(result)
 }
 
 #[tauri::command]
-async fn FST_scan(state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
+async fn FST_state(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Result<bool> {
+    dbg!("FST_state");
+    let (busy, n) = state.lock().unwrap().state(None);
+    if busy {
+        app_handle.emit("notification", n)?;
+    } 
+    Ok(busy)
+}
+
+#[tauri::command]
+async fn FST_scan(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
     dbg!("FST_scan");
-    state.lock().unwrap().FST_scan();
+    let (busy, n) = state.lock().unwrap().state(None);
+    if busy {
+        app_handle.emit("notification", n)?;
+        return Ok(());
+    } 
+    let (_, n) = state.lock().unwrap().state(Some(true));
+    app_handle.emit("notification", n)?;
+
+    // dont hold the lock while scanning
+    let guard = state.lock().unwrap();
+    let mut updater = guard.generater();
+    drop(guard);
+
+    updater.resolve();
+    let new_storage: Storage = updater.into();
+    new_storage.dump("output.csv");
+
+    state.lock().unwrap().replace(new_storage);
+    
+    let (_, n) = state.lock().unwrap().state(Some(false));
+    app_handle.emit("notification", n)?;
     Ok(())
 }
 
@@ -99,8 +132,9 @@ pub fn run() {
             send_state,
             receive_state,
             undo,
-            FST_get_children,
-            FST_scan
+            FST_children,
+            FST_scan,
+            FST_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -110,8 +144,8 @@ pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     match event {
         WindowEvent::CloseRequested { .. } => {
             window.emit("close-requested", ()).unwrap();
-            let state = window.app_handle().state::<Mutex<AppState>>();
-            state.lock().unwrap().exit().unwrap();
+            // let state = window.app_handle().state::<Mutex<AppState>>();
+            // state.lock().unwrap().exit().unwrap();
             println!("tauri exit");
         }
         _ => {}

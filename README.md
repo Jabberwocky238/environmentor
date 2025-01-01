@@ -22,10 +22,19 @@
 
 ![alt text](docs/usage2.png)
 
+## v0.2 extra
+
+支持扫盘，以观察文件夹大小。
+
++ caching: 会生成csv文件在app目录下。
+
+目前只支持D盘全盘扫描，后续会支持更细粒度的控制策略。
+
+![alt text](docs/fst1.png)
+
 ## 碎碎念
 
 目前只支持windows，用法跟原生的一模一样
 
 目前为了安全考虑只开放了操作用户环境变量的权限
-
 

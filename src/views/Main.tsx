@@ -178,7 +178,7 @@ function EnvList() {
 
     return (
         <>
-            <div className="btn-group">
+            <div className="btn-group" data-mode="row" data-style="light">
                 <button onClick={() => setAdding(true)}>Add</button>
                 <button onClick={btnDelete}>Del</button>
             </div>
@@ -336,7 +336,7 @@ function ValueList() {
 
     return (
         <>
-            <div className="btn-group">
+            <div className="btn-group" data-mode="row" data-style="light">
                 <button onClick={btnAdd}>Add</button>
                 <button onClick={btnFlush}>Flush</button>
                 <button onClick={btnRefresh}>Refresh</button>

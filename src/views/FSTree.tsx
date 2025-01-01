@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useEffect, useState } from "react";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
-import { FST_get_children as _FST_get_children, FST_scan as _FST_scan } from '@/core';
+import { FST_get_children as _FST_get_children, FST_scan as _FST_scan, FST_state as _FST_state } from '@/core';
 
 import '@/styles/FSTree.scss';
 
@@ -35,9 +35,10 @@ interface IStore {
     choose: (node: TreeNode) => Promise<void>;
     init: () => Promise<void>;
     scan: () => Promise<void>;
+    getState: () => Promise<boolean>;
 }
 
-const useStore = create<IStore>((set, get) => ({
+const useStore = create<IStore>((set, _) => ({
     tree: [],
     chosen: null,
     choose: async (node) => {
@@ -60,6 +61,9 @@ const useStore = create<IStore>((set, get) => ({
         await _FST_scan();
         const children = await getChildren();
         set({ tree: children, chosen: null });
+    },
+    getState: async () => {
+        return await _FST_state();
     }
 }));
 
@@ -85,7 +89,7 @@ function Details({ chosen }: { chosen: TreeNode }) {
     const show_size = (size: number) => {
         if (size < 1024) {
             return <p>{chosen.size.toFixed(3)} bytes</p>;
-        } 
+        }
         size /= 1024;
         if (size < 1024) {
             return <p>{size.toFixed(3)} KB</p>;
@@ -106,16 +110,32 @@ function Details({ chosen }: { chosen: TreeNode }) {
             <p>{chosen.scriptsCount} scripts</p>
             <p>{chosen.isDir ? "Directory" : "File"}</p>
             <p>{chosen.isAllow ? "Allow" : "Deny"}</p>
+            <div className="btn-group" data-mode="col" data-style="dark">
+                {/* <button onClick={() => { }}>Reveal in File Explorer</button>
+                <button onClick={() => { }}>Add to Path</button> */}
+            </div>
         </div>
     );
 }
 
 export default function () {
-    const { chosen, tree, scan, init } = useStore();
+    const { chosen, tree, scan: _scan, init, getState } = useStore();
+    const [showMask, setShowMask] = useState(false);
 
     useEffect(() => {
-        init();
+        getState().then((busy) => {
+            setShowMask(busy);
+            if (!busy) {
+                init();
+            };
+        });
     }, []);
+
+    const scan = async () => {
+        setShowMask(true);
+        await _scan();
+        setShowMask(false);
+    }
 
     return (
         <div className="row">
@@ -129,14 +149,14 @@ export default function () {
                 </div>
             </div>
             <div className="col" style={{ '--col-width': '40%' } as React.CSSProperties}>
-                <div className="btn-group">
+                <div className="btn-group" data-mode="row" data-style="light">
                     <button onClick={scan}>Scan</button>
-                    <button onClick={() => {}}>Refresh</button>
                 </div>
                 <div className="list">
                     {chosen && <Details chosen={chosen} />}
                 </div>
             </div>
+            <div className={showMask ? "FSTreeMask" : "FSTreeMaskDisabled"}>Scanning...please wait...</div>
         </div>
     );
 }

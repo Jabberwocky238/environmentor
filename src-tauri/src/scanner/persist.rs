@@ -59,7 +59,7 @@ impl Persist for Storage {
             .collect();
 
         println!("[Storage] load: found {} records", m.len());
-        Self { path_map: m }
+        Self { path_map: m, updating: false }
     }
 }
 

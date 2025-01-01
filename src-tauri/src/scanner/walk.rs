@@ -20,6 +20,7 @@ impl _Storage {
         println!("consume: {} records", self._map.len());
         Storage {
             path_map: self._map,
+            updating: false,
         }
     }
     pub fn load_cache(&mut self, cache: &HashMap<String, NodeRecord>) {
@@ -75,6 +76,7 @@ pub fn single_thread_walk(
         None => &HashMap::new(),
     };
     let mut storage = _Storage::default();
+    storage._map.reserve(100_0000);
     storage.load_cache(cache);
     // let mut stack: Vec<PathBuf> = get_drives();
     let mut stack: Vec<PathBuf> = vec!["D:\\".into()];

@@ -88,10 +88,13 @@ interface TreeNode {
     is_allowed: boolean;
 }
 async function FST_get_children(absPath?: string): Promise<TreeNode[]> {
-    return invoke("FST_get_children", { absPath });
+    return invoke("FST_children", { absPath });
 }
 async function FST_scan(): Promise<void> {
     return invoke("FST_scan");
 }
-export { flush, TaskAction, receive_state, undo, FST_get_children, FST_scan };
+async function FST_state(): Promise<boolean> {
+    return invoke("FST_state");
+}
+export { flush, TaskAction, receive_state, undo, FST_get_children, FST_scan, FST_state };
 export type { EnvHashMap };

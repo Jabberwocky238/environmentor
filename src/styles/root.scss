@@ -60,10 +60,11 @@ body,
         display: flex;
         flex-direction: column;
 
-        & > * {
+        &>* {
             margin: 0 12px 12px 12px;
         }
-        & > *:first-child {
+
+        &>*:first-child {
             margin-top: 12px;
         }
     }
@@ -99,11 +100,11 @@ body,
             padding: 8px;
         }
 
-        & > *:first-child {
+        &>*:first-child {
             padding-left: 8px;
         }
 
-        & > *:last-child {
+        &>*:last-child {
             padding-right: 8px;
         }
     }
@@ -124,7 +125,7 @@ button {
     background-color: var(--color-gray);
     transition: border-color 0.25s;
     // box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-    
+
     cursor: pointer;
 
     &:hover {
@@ -141,6 +142,7 @@ button {
     }
 }
 
+
 .btn-group {
     display: flex;
     justify-content: space-between;
@@ -153,26 +155,68 @@ button {
         padding: 8px;
         flex-grow: 1;
     }
+}
+
+[data-mode=col].btn-group {
+    flex-direction: column;
 
     *:first-child {
         border-top-left-radius: var(--radius-border);
         /* 左上角圆角 */
-        border-top-right-radius: 0;
+        border-top-right-radius: var(--radius-border);
+        /* 右上角圆角 */
+        // border-bottom-right-radius: 0; // comment this in case only one button
+        /* 右下角方形 */
+        // border-bottom-left-radius: 0; // comment this in case only one button
+        /* 左下角方形 */
+    }
+
+    *:last-child {
+        // border-top-left-radius: 0; // comment this in case only one button
+        /* 左上角方形 */
+        // border-top-right-radius: 0; // comment this in case only one button
         /* 右上角方形 */
-        border-bottom-right-radius: 0;
+        border-bottom-right-radius: var(--radius-border);
+        /* 右下角圆角 */
+        border-bottom-left-radius: var(--radius-border);
+        /* 左下角圆角 */
+    }
+}
+
+[data-mode=row].btn-group {
+    flex-direction: row;
+
+    *:first-child {
+        border-top-left-radius: var(--radius-border);
+        /* 左上角圆角 */
+        // border-top-right-radius: 0; // comment this in case only one button
+        /* 右上角方形 */
+        // border-bottom-right-radius: 0; // comment this in case only one button
         /* 右下角方形 */
         border-bottom-left-radius: var(--radius-border);
         /* 左下角圆角 */
     }
 
     *:last-child {
-        border-top-left-radius: 0;
+        // border-top-left-radius: 0; // comment this in case only one button
         /* 左上角圆角 */
         border-top-right-radius: var(--radius-border);
         /* 右上角方形 */
         border-bottom-right-radius: var(--radius-border);
         /* 右下角方形 */
-        border-bottom-left-radius: 0;
+        // border-bottom-left-radius: 0; // comment this in case only one button
         /* 左下角圆角 */
+    }
+}
+
+[data-style=dark].btn-group {
+    button {
+        background-color: var(--color-dark);
+    }
+}
+
+[data-style=light].btn-group {
+    button {
+        background-color: var(--color-gray);
     }
 }
