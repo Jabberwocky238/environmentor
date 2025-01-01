@@ -25,7 +25,7 @@ async function getChildren(path?: string): Promise<TreeNode[]> {
         size: child.size,
         scriptsCount: child.scripts_count,
         isDir: child.is_dir,
-        isAllow: child.is_allow,
+        isAllow: child.is_allowed,
     }));
 }
 
@@ -33,6 +33,7 @@ interface IStore {
     tree: TreeNode[];
     chosen: TreeNode | null;
     choose: (node: TreeNode) => Promise<void>;
+    init: () => Promise<void>;
     scan: () => Promise<void>;
 }
 
@@ -48,6 +49,10 @@ const useStore = create<IStore>((set, get) => ({
             node.children = children;
             return { ...state, chosen: node }
         });
+    },
+    init: async () => {
+        const children = await getChildren();
+        set({ tree: children, chosen: null });
     },
     scan: async () => {
         const ok = await _ask('This action cannot be reverted. Are you sure?', "Begin to Scan");
@@ -77,12 +82,27 @@ function TreeView({ node, style }: { node: TreeNode, style?: React.CSSProperties
 }
 
 function Details({ chosen }: { chosen: TreeNode }) {
+    const show_size = (size: number) => {
+        if (size < 1024) {
+            return <p>{chosen.size.toFixed(3)} bytes</p>;
+        } 
+        size /= 1024;
+        if (size < 1024) {
+            return <p>{size.toFixed(3)} KB</p>;
+        }
+        size /= 1024;
+        if (size < 1024) {
+            return <p>{size.toFixed(3)} MB</p>;
+        }
+        size /= 1024;
+        return <p>{size.toFixed(3)} GB</p>;
+    }
     return (
         <div>
             <h2>{chosen.name}</h2>
             <p>{chosen.absPath}</p>
             <p>{chosen.size} bytes</p>
-            <p>{chosen.size / 1024 / 1024} MB</p>
+            {show_size(chosen.size)}
             <p>{chosen.scriptsCount} scripts</p>
             <p>{chosen.isDir ? "Directory" : "File"}</p>
             <p>{chosen.isAllow ? "Allow" : "Deny"}</p>
@@ -91,12 +111,10 @@ function Details({ chosen }: { chosen: TreeNode }) {
 }
 
 export default function () {
-    const { chosen, tree, scan } = useStore();
+    const { chosen, tree, scan, init } = useStore();
 
     useEffect(() => {
-        getChildren().then((children) => {
-            useStore.setState({ tree: children });
-        });
+        init();
     }, []);
 
     return (

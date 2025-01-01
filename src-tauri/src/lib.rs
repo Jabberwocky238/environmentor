@@ -6,6 +6,8 @@ use app::AppAction;
 use app::AppState;
 use app::SendState;
 use app::TreeNode;
+use tauri::WindowEvent;
+use tauri::Wry;
 
 use std::fs;
 use std::path::PathBuf;
@@ -72,25 +74,26 @@ pub fn run() {
         .setup(|app| {
             app.manage(Mutex::new(AppState::new()));
 
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_i])?;
-            let tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .menu(&menu)
-                .menu_on_left_click(true)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "quit" => {
-                        println!("quit menu item was clicked");
-                        app.exit(0);
-                    }
-                    _ => {
-                        println!("menu item {:?} not handled", event.id);
-                    }
-                })
-                .build(app)?;
+            // let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            // let menu = Menu::with_items(app, &[&quit_i])?;
+            // let tray = TrayIconBuilder::new()
+            //     .icon(app.default_window_icon().unwrap().clone())
+            //     .menu(&menu)
+            //     .menu_on_left_click(true)
+            //     .on_menu_event(|app, event| match event.id.as_ref() {
+            //         "quit" => {
+            //             println!("quit menu item was clicked");
+            //             app.exit(0);
+            //         }
+            //         _ => {
+            //             println!("menu item {:?} not handled", event.id);
+            //         }
+            //     })
+            //     .build(app)?;
             Ok(())
         })
         .plugin(tauri_plugin_shell::init())
+        .on_window_event(handle_window_event)
         .invoke_handler(tauri::generate_handler![
             flush,
             send_state,
@@ -101,4 +104,16 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+pub fn handle_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
+    match event {
+        WindowEvent::CloseRequested { .. } => {
+            window.emit("close-requested", ()).unwrap();
+            let state = window.app_handle().state::<Mutex<AppState>>();
+            state.lock().unwrap().exit().unwrap();
+            println!("tauri exit");
+        }
+        _ => {}
+    }
 }

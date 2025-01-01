@@ -24,7 +24,7 @@ pub struct TreeNode {
     size: u64,
     scripts_count: u64,
     is_dir: bool,
-    is_allow: bool,
+    is_allowed: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ pub trait AppAction {
     fn undo(&mut self) -> Notification;
     
     fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode>;
-    fn FST_scan(&mut self) -> ();
+    async fn FST_scan(&mut self) -> ();
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,6 +81,10 @@ impl AppState {
 
         Self { tm, s: Storage::load("output.csv") }
     } 
+    pub fn exit(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.s.dump("output.csv");
+        Ok(())
+    }
 }
 
 impl AppAction for AppState {
@@ -109,7 +113,7 @@ impl AppAction for AppState {
 
     fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode> {
         let result = self.s.children(abs_path);
-        result.into_iter().map(|(abspath, node, is_allow)| {
+        result.into_iter().map(|(abspath, node)| {
             let abs_path = abspath.to_str().unwrap().to_string();
             TreeNode {
                 name: if let Some(name) = abspath.file_name() {
@@ -119,14 +123,14 @@ impl AppAction for AppState {
                 },
                 abs_path,
                 size: node.size,
-                scripts_count: node.has_envvar_count,
+                scripts_count: node.script_count,
                 is_dir: abspath.is_dir(),
-                is_allow,
+                is_allowed: node.is_allowed,
             }
         }).collect()
     }
 
-    fn FST_scan(&mut self) -> () {
-        self.s.update();
+    async fn FST_scan(&mut self) -> () {
+        self.s.update().await;
     }
 }

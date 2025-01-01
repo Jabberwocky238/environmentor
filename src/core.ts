@@ -85,7 +85,7 @@ interface TreeNode {
     size: number;
     scripts_count: number;
     is_dir: boolean;
-    is_allow: boolean;
+    is_allowed: boolean;
 }
 async function FST_get_children(absPath?: string): Promise<TreeNode[]> {
     return invoke("FST_get_children", { absPath });
