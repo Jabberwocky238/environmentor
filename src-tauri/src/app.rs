@@ -63,7 +63,9 @@ pub trait AppAction {
     fn send_state(&self) -> SendState;
     fn receive_state(&mut self, task: TaskLogData) -> ();
     fn undo(&mut self) -> Notification;
-    fn FST_get_children(&self, abs_path: Option<&str>) -> Vec<TreeNode>;
+    
+    fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode>;
+    fn FST_scan(&mut self) -> ();
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -105,7 +107,7 @@ impl AppAction for AppState {
         notification
     }
 
-    fn FST_get_children(&self, abs_path: Option<&str>) -> Vec<TreeNode> {
+    fn FST_get(&self, abs_path: Option<&str>) -> Vec<TreeNode> {
         let result = self.s.children(abs_path);
         result.into_iter().map(|(abspath, node, is_allow)| {
             let abs_path = abspath.to_str().unwrap().to_string();
@@ -122,5 +124,9 @@ impl AppAction for AppState {
                 is_allow,
             }
         }).collect()
+    }
+
+    fn FST_scan(&mut self) -> () {
+        self.s.update();
     }
 }

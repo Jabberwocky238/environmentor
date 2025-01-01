@@ -2,8 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 
-import "./styles/root.scss";
 import "./styles/nodefault.css";
+import "./styles/root.scss";
+
 
 const StrictApp = () => (
   <React.StrictMode>

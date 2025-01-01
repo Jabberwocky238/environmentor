@@ -48,7 +48,6 @@ impl Storage {
     /// return (abs_path, node_info, is_allowed)
     pub fn children(&self, abs_path: Option<&str>) -> Vec<(PathBuf, NodeRecord, bool)> {
         if let None = abs_path {
-            dbg!("Storage children: None");
             return get_drives()
                 .iter()
                 .map(|d| (d.to_owned(), NodeRecord::default(), true))
@@ -67,11 +66,11 @@ impl Storage {
                                 Some(r) => r.clone(),
                                 None => NodeRecord::default(),
                             };
-                            children.push((path, record.clone(), true));
+                            children.push((path, record, true));
                         }
                         Err(_) => {
                             children.push((PathBuf::default(), NodeRecord::default(), false));
-                        },
+                        }
                     }
                 }
             }
@@ -147,7 +146,7 @@ impl Storage {
                 is_inited: false,
             };
         }
-        
+
         let m: HashMap<String, NodeRecord> = csv::Reader::from_path(path)
             .unwrap()
             .deserialize()
@@ -162,7 +161,7 @@ impl Storage {
                 (k, v)
             })
             .collect();
-        
+
         println!("Storage load: found {} records", m.len());
         Self {
             path_map: m,
@@ -199,6 +198,7 @@ impl _Storage {
                 },
             );
         }
+        println!("consume: {} records", path_map.len());
         Storage {
             path_map,
             is_inited: true,
@@ -211,23 +211,22 @@ impl _Storage {
         }
     }
     pub fn accumulate(&mut self, path: &PathBuf, add_size: u64, add_scripts: u64) {
-        let parent = match path.parent() {
-            Some(p) => p,
-            None => return, // root has no parent
-        };
-        let path_string = parent.to_str().unwrap().to_string();
+        // 先尝试添加自己
+        let path_string = path.to_str().unwrap().to_string();
         self.path_2_size
             .entry(path_string.to_owned())
             .and_modify(|e| *e += add_size)
-            .or_insert_with(|| {
-                let metadata = fs::metadata(&path_string).unwrap();
-                add_size + metadata.len()
-            });
+            .or_insert(add_size);
         self.path_2_scripts
             .entry(path_string.to_owned())
             .and_modify(|e| *e += add_scripts)
             .or_insert(add_scripts);
+
         // recursive call parent to accumulate the size
+        let parent = match path.parent() {
+            Some(p) => p,
+            None => return, // root has no parent
+        }; 
         self.accumulate(&parent.to_path_buf(), add_size, add_scripts);
     }
 }
@@ -256,13 +255,15 @@ fn single_thread_walk(
                             continue;
                         }
                         // 如果是目录，则递归遍历
-                        if path.is_dir() {
-                            stack.push(path.to_owned());
-                        }
-
-                        let _size = if treat_as_file(&path)? {
+                        let _size = if treat_as_ignore(&path)? {
+                            continue;
+                        } else if treat_as_file(&path)? {
                             pure_walk(&path)?
                         } else {
+                            // common file or directory
+                            if path.is_dir() {
+                                stack.push(path.to_owned());
+                            }
                             fs::metadata(&path)?.len()
                         };
                         let _script = if treat_as_script(&path)? { 1 } else { 0 };
@@ -345,14 +346,16 @@ fn multi_thread_walk(
                             match entry {
                                 Ok(entry) => {
                                     let path = entry.path();
-                                    if path.is_dir() {
-                                        _q_walk.lock().unwrap().push(path.to_owned());
-                                    }
-
-                                    let _size = if treat_as_file(&path).unwrap() {
+                                    
+                                    let _size = if treat_as_ignore(&path).unwrap() {
+                                        continue;
+                                    } else if treat_as_file(&path).unwrap() {
                                         pure_walk(&path).unwrap()
                                     } else {
                                         // common file or directory
+                                        if path.is_dir() {
+                                            _q_walk.lock().unwrap().push(path.to_owned());
+                                        }
                                         fs::metadata(&path).unwrap().len()
                                     };
                                     _RowLockStorage::accumulate(
@@ -411,9 +414,16 @@ fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
     Ok(false)
 }
 
-const SCRIPT_EXTENSIONS: [&str; 5] = [".exe", ".dll", ".bat", ".vbs", ".ps1"];
+fn treat_as_ignore(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
+    let filename = path.to_str().unwrap().to_string();
+    if filename.starts_with("$") {
+        return Ok(true);
+    }
+    Ok(false)
+}
 
 fn treat_as_script(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
+    const SCRIPT_EXTENSIONS: [&str; 5] = [".exe", ".dll", ".bat", ".vbs", ".ps1"];
     let filename = path.to_str().unwrap().to_string();
     for ext in SCRIPT_EXTENSIONS.iter() {
         if filename.ends_with(ext) {

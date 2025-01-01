@@ -90,6 +90,8 @@ interface TreeNode {
 async function FST_get_children(absPath?: string): Promise<TreeNode[]> {
     return invoke("FST_get_children", { absPath });
 }
-
-export { flush, TaskAction, receive_state, undo, FST_get_children };
+async function FST_scan(): Promise<void> {
+    return invoke("FST_scan");
+}
+export { flush, TaskAction, receive_state, undo, FST_get_children, FST_scan };
 export type { EnvHashMap };

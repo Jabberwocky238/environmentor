@@ -28,21 +28,21 @@ async fn flush(state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
 }
 
 #[tauri::command]
-fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
+async fn send_state(state: State<'_, Mutex<AppState>>) -> tauri::Result<SendState> {
     dbg!("send_state");
     let send_state = state.lock().unwrap().send_state();
     Ok(send_state)
 }
 
 #[tauri::command]
-fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri::Result<()> {
+async fn receive_state(state: State<'_, Mutex<AppState>>, task: TaskLogData) -> tauri::Result<()> {
     dbg!(&task);
     state.lock().unwrap().receive_state(task);
     Ok(())
 }
 
 #[tauri::command]
-fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
+async fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
     dbg!("undo");
     let notification = state.lock().unwrap().undo();
     app_handle
@@ -52,10 +52,17 @@ fn undo(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> tauri::Resu
 }
 
 #[tauri::command]
-fn FST_get_children(state: State<'_, Mutex<AppState>>, abs_path: Option<&str>) -> tauri::Result<Vec<TreeNode>> {
+async fn FST_get_children(state: State<'_, Mutex<AppState>>, abs_path: Option<&str>) -> tauri::Result<Vec<TreeNode>> {
     dbg!("FST_get_children");
-    let result = state.lock().unwrap().FST_get_children(abs_path);
+    let result = state.lock().unwrap().FST_get(abs_path);
     Ok(result)
+}
+
+#[tauri::command]
+async fn FST_scan(state: State<'_, Mutex<AppState>>) -> tauri::Result<()> {
+    dbg!("FST_scan");
+    state.lock().unwrap().FST_scan();
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,7 +96,8 @@ pub fn run() {
             send_state,
             receive_state,
             undo,
-            FST_get_children
+            FST_get_children,
+            FST_scan
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
