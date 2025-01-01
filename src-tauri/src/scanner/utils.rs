@@ -20,7 +20,7 @@ pub fn get_modified(path: &str) -> u64 {
         .as_secs()
 }
 
-pub fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn treat_as_file(path: &PathBuf) -> bool {
     // let filename = path.to_str().unwrap().to_string();
     // if filename.starts_with(".") {
     //     return Ok(true);
@@ -28,7 +28,7 @@ pub fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>>
     // if filename.ends_with("$RECYCLE.BIN") {
     //     return Ok(true);
     // }
-    Ok(false)
+    false
 }
 
 pub fn treat_as_ignore(path: &PathBuf) -> bool {
@@ -45,15 +45,15 @@ fn test_treat_as_ignore() {
     assert_eq!(treat_as_ignore(&path), true);
 }
 
-pub fn treat_as_script(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn treat_as_script(path: &PathBuf) -> bool {
     const SCRIPT_EXTENSIONS: [&str; 5] = [".exe", ".dll", ".bat", ".vbs", ".ps1"];
     let filename = path.to_str().unwrap().to_string();
     for ext in SCRIPT_EXTENSIONS.iter() {
         if filename.ends_with(ext) {
-            return Ok(true);
+            return true;
         }
     }
-    Ok(false)
+    false
 }
 
 pub fn pure_walk(path: &PathBuf) -> Result<u64, Box<dyn std::error::Error>> {

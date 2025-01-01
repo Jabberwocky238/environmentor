@@ -13,10 +13,11 @@ use std::path::{Path, PathBuf};
 #[tokio::test]
 async fn test_scan() {
     let s1 = Storage::load("output.csv");
-    let mut s2 = StorageUpdater::from(s1);
-    s2.resolve();
-    let s1: Storage = s2.into();
-    s1.dump("output.csv");
+    let s2 = StorageUpdater::from(s1);
+    let s1: Storage = s2.consume();
+    // s1.dump("output.csv");
+    debug_assert!(s1.path_map["D:\\"].size > 3963_0000_0000);
+    debug_assert!(s1.path_map["D:\\"].size < 3964_0000_0000);
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -104,7 +105,7 @@ impl Into<Storage> for StorageUpdater {
 }
 
 impl StorageUpdater {
-    pub fn resolve(&mut self) {
+    pub fn consume(mut self) -> Storage {
         println!("[StorageUpdater] update start");
         let time1 = utils::now();
         // remove out-dated records
@@ -116,6 +117,7 @@ impl StorageUpdater {
         self._scna_with_cache();
         let time3 = utils::now();
         println!("[StorageUpdater] scan_with_cache: {}s", time3 - time2);
+        return self.into();
     }
 
     fn _tree_shaking(&mut self) {
@@ -179,8 +181,8 @@ impl StorageUpdater {
     }
 
     fn _scna_with_cache(&mut self) {
-        // let s = multi_thread_walk().unwrap();
-        let s = walk::single_thread_walk(Some(&self.path_map)).unwrap();
+        let s = walk::multi_thread_walk(Some(&self.path_map)).unwrap();
+        // let s = walk::single_thread_walk(Some(&self.path_map)).unwrap();
         self.path_map = s.path_map;
     }
 }

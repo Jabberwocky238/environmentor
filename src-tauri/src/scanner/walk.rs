@@ -2,9 +2,10 @@ use crossbeam::queue::SegQueue;
 use crossbeam::scope;
 use dashmap::DashMap;
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::time::Duration;
+use std::{fs, thread};
 
 use super::utils::{get_modified, pure_walk, treat_as_file, treat_as_ignore, treat_as_script};
 use super::{NodeRecord, Storage};
@@ -82,6 +83,11 @@ pub fn single_thread_walk(
     let mut stack: Vec<PathBuf> = vec!["D:\\".into()];
 
     while let Some(__path) = stack.pop() {
+        // 如果是缓存的目录，则直接累加
+        if let Some(v) = storage._map.get(__path.to_str().unwrap()) {
+            storage.accumulate(&__path, v.size, v.script_count);
+            continue;
+        }
         if let Ok(entries) = fs::read_dir(&__path) {
             let entries_iter = entries
                 .filter(|e| e.is_ok())
@@ -90,12 +96,12 @@ pub fn single_thread_walk(
                 .map(|e| e.path());
             for entry_pathbuf in entries_iter {
                 // 如果是缓存的目录，则直接累加
-                if let Some(v) = cache.get(&entry_pathbuf.to_str().unwrap().to_string()) {
+                if let Some(v) = storage._map.get(entry_pathbuf.to_str().unwrap()) {
                     storage.accumulate(&entry_pathbuf, v.size, v.script_count);
                     continue;
                 }
                 // 如果是目录，则递归遍历
-                let _size = if treat_as_file(&entry_pathbuf)? {
+                let _size = if treat_as_file(&entry_pathbuf) {
                     pure_walk(&entry_pathbuf)?
                 } else {
                     // common file or directory
@@ -104,7 +110,7 @@ pub fn single_thread_walk(
                     }
                     fs::metadata(&entry_pathbuf)?.len()
                 };
-                let _script = if treat_as_script(&entry_pathbuf)? {
+                let _script = if treat_as_script(&entry_pathbuf) {
                     1
                 } else {
                     0
@@ -120,110 +126,203 @@ pub fn single_thread_walk(
 }
 
 // ==================== multiple threads ====================
-struct _RowLockStorage;
-impl _RowLockStorage {
-    pub fn accumulate(map: Arc<DashMap<String, u64>>, path: &PathBuf, add: u64) {
+type RowLockStorage = RwLock<HashMap<String, NodeRecord>>;
+struct _RowLockStorageHelper;
+
+impl _RowLockStorageHelper {
+    pub fn accumulate(map: Arc<RowLockStorage>, path: &PathBuf, add_size: u64, add_scripts: u64) {
+        // 先尝试添加自己
+        // println!("accumulate: {:?}", path);
+        let path_string = path.to_str().unwrap().to_string();
+        let last_modified = get_modified(&path_string);
+
+        map.write()
+            .unwrap()
+            .entry(path_string)
+            .and_modify(|e| {
+                e.size += add_size;
+                e.last_modified = last_modified;
+                e.script_count += add_scripts;
+                e.is_allowed = true;
+            })
+            .or_insert(NodeRecord::with(add_size, last_modified, add_scripts, true));
+        // println!("accumulate end: {:?}", path);
+        // recursive call parent to accumulate the size
         let parent = match path.parent() {
             Some(p) => p,
             None => return, // root has no parent
         };
-        let path_string = parent.to_str().unwrap().to_string();
-        map.entry(path_string.to_owned())
-            .and_modify(|e| *e += add)
-            .or_insert_with(|| {
-                let metadata = fs::metadata(path_string).unwrap();
-                add + metadata.len()
-            });
-        // recursive call parent to accumulate the size
-        _RowLockStorage::accumulate(map, &parent.to_path_buf(), add);
+        // println!("accumulate parent: {:?}", parent);
+        let len = map.read().unwrap().len();
+        _RowLockStorageHelper::accumulate(map, &parent.to_path_buf(), add_size, add_scripts);
+        if len % 1000 == 0 {
+            println!("accumulate: {} records", len);
+        }
+    }
+    pub fn load_cache(map: &mut RowLockStorage, cache: &HashMap<String, NodeRecord>) {
+        let mut guard = map.write().unwrap();
+        for (k, v) in cache {
+            guard.insert(k.to_owned(), v.clone());
+        }
+        println!(
+            "[_RowLockStorageHelper] load_cache: {} records",
+            guard.len()
+        );
+    }
+    pub fn not_allowed(map: Arc<RowLockStorage>, path: &PathBuf) {
+        let path_string = path.to_str().unwrap().to_string();
+        let last_modified = get_modified(&path_string);
+        map.write()
+            .unwrap()
+            .entry(path_string.to_owned())
+            .and_modify(|e| {
+                e.size = 0;
+                e.last_modified = last_modified;
+                e.script_count = 0;
+                e.is_allowed = false;
+            })
+            .or_insert(NodeRecord::with(0, last_modified, 0, false));
+    }
+    pub fn turn(map: RowLockStorage) -> Storage {
+        let _map = map.into_inner().unwrap();
+        Storage {
+            path_map: _map,
+            updating: false,
+        }
     }
 }
 
 pub fn multi_thread_walk(
     cache: Option<&HashMap<String, NodeRecord>>,
-) -> Result<HashMap<String, NodeRecord>, Box<dyn std::error::Error>> {
+) -> Result<Storage, Box<dyn std::error::Error>> {
+    let cache = match cache {
+        Some(c) => c,
+        None => &HashMap::new(),
+    };
+    let cache = cache.clone();
+
     const THREADS: usize = 8;
     // let roots: Vec<PathBuf> = get_drives();
     let roots: Vec<PathBuf> = vec!["D:\\".into()];
-
-    let row_lock_storage = Arc::new(DashMap::<String, u64>::new());
-
-    let stop = Arc::new(RwLock::new(vec![false; THREADS]));
-
     let q_walk = SegQueue::new();
     for root in roots {
         q_walk.push(root);
     }
-    let q_walk = Arc::new(q_walk);
+
+    let mut row_lock_storage = RowLockStorage::default();
+    _RowLockStorageHelper::load_cache(&mut row_lock_storage, &cache);
+    let row_lock_storage = Arc::new(row_lock_storage);
+    let cache = Arc::new(cache);
+    let stop = Arc::new(Mutex::new(vec![false; THREADS]));
+    let q_walk = Arc::new((Mutex::new(q_walk), Condvar::new()));
 
     scope(|scope| {
         for t_index in 0..THREADS {
-            let row_lock_storage = Arc::clone(&row_lock_storage);
+            let _row_lock_storage: Arc<RowLockStorage> = Arc::clone(&row_lock_storage);
+            let _cache = Arc::clone(&cache);
+            let _stop = Arc::clone(&stop);
             let _q_walk = Arc::clone(&q_walk);
-            let stop = Arc::clone(&stop);
-
+            
             scope.spawn(move |_| {
                 loop {
-                    let path = match _q_walk.pop() {
-                        Some(p) => {
-                            if stop.read().unwrap()[t_index] {
-                                stop.write().unwrap()[t_index] = false;
-                            }
-                            p
-                        }
-                        None => {
-                            println!("Thread {} try stop", t_index);
-                            // if all decide to stop, then stop
-                            stop.write().unwrap()[t_index] = true;
-                            let all_stop = stop.read().unwrap().iter().all(|&x| x);
-                            if all_stop {
+                    let __path = {
+                        let (lock, cvar) = &*_q_walk;
+                        let mut q_walk = lock.lock().unwrap();
+                        while q_walk.is_empty() {
+                            let mut stop_flags = _stop.lock().unwrap();
+                            stop_flags[t_index] = true;
+                            println!("Thread {} stop", t_index);
+                            if stop_flags.iter().all(|&x| x) {
+                                drop(q_walk);
+                                cvar.notify_one();
+                                println!("Thread {} shutdown", t_index);
                                 return;
-                            } else {
+                            }
+                            drop(stop_flags);
+                            q_walk = cvar.wait(q_walk).unwrap();
+                            println!("Thread {} start", t_index);
+                        }
+                        cvar.notify_all();
+                        q_walk.pop().unwrap()
+                    };
+                    // println!("Thread {} start walk", t_index);
+
+                    // 如果是缓存的目录，则直接累加
+                    let pstr = __path.to_str().unwrap();
+                    // println!("Thread {} walk: {:?}", t_index, pstr);
+                    if let Some(v) = _cache.get(pstr) {
+                        // println!("Thread {} cache hitted: {:?}", t_index, pstr);
+                        _RowLockStorageHelper::accumulate(
+                            Arc::clone(&_row_lock_storage),
+                            &__path,
+                            v.size,
+                            v.script_count,
+                        );
+                        continue;
+                    }
+
+                    if let Ok(entries) = fs::read_dir(&__path) {
+                        let entries = entries
+                            .filter(|e| e.is_ok())
+                            .map(|e| e.unwrap())
+                            .filter(|e| !treat_as_ignore(&e.path()))
+                            .map(|e| e.path());
+                        for entry_pathbuf in entries {
+                            // println!("Thread {} traverse: {:?}", t_index, &entry_pathbuf);
+                            // cache hitted
+                            let pstr = entry_pathbuf.to_str().unwrap();
+                            if let Some(v) = _cache.get(pstr) {
+                                // println!("Thread {} cache hitted: {:?}", t_index, pstr);
+                                _RowLockStorageHelper::accumulate(
+                                    Arc::clone(&_row_lock_storage),
+                                    &entry_pathbuf,
+                                    v.size,
+                                    v.script_count,
+                                );
                                 continue;
                             }
-                        }
-                    };
-
-                    // println!("Thread {} start walk", t_index);
-                    if let Ok(entries) = fs::read_dir(&path) {
-                        for entry in entries {
-                            match entry {
-                                Ok(entry) => {
-                                    let path = entry.path();
-
-                                    let _size = if treat_as_ignore(&path) {
-                                        continue;
-                                    } else if treat_as_file(&path).unwrap() {
-                                        pure_walk(&path).unwrap()
-                                    } else {
-                                        // common file or directory
-                                        if path.is_dir() {
-                                            _q_walk.push(path.to_owned());
-                                        }
-                                        fs::metadata(&path).unwrap().len()
-                                    };
-                                    _RowLockStorage::accumulate(
-                                        Arc::clone(&row_lock_storage),
-                                        &path,
-                                        _size,
-                                    );
+                            println!("Thread {} no cache hitted: {:?}", t_index, &entry_pathbuf);
+                            // no cache hitted
+                            let _size = if treat_as_file(&entry_pathbuf) {
+                                pure_walk(&entry_pathbuf).unwrap()
+                            } else {
+                                // common file or directory
+                                if entry_pathbuf.is_dir() {
+                                    let (lock, cvar) = &*_q_walk;
+                                    lock.lock().unwrap().push(entry_pathbuf.to_owned());
+                                    // _q_walk.push(entry_pathbuf.to_owned());
                                 }
-                                Err(e) => println!("Failed to read entry: {}", e),
-                            }
+                                fs::metadata(&entry_pathbuf).unwrap().len()
+                            };
+                            let _script = if treat_as_script(&entry_pathbuf) {
+                                1
+                            } else {
+                                0
+                            };
+                            println!("Thread {} accumulate: {:?}", t_index, &entry_pathbuf);
+                            _RowLockStorageHelper::accumulate(
+                                Arc::clone(&_row_lock_storage),
+                                &entry_pathbuf,
+                                _size,
+                                _script,
+                            );
+                            println!("Thread {} accumulate end: {:?}", t_index, &entry_pathbuf);
                         }
                     } else {
-                        println!("Failed to open directory: {:?}", &path);
+                        println!("Failed to open directory: {:?}", &__path);
+                        _RowLockStorageHelper::not_allowed(Arc::clone(&_row_lock_storage), &__path);
                     }
+                    println!("Thread {} end walk", t_index);
                 }
             });
         }
     })
     .unwrap();
     // transform the storage
-    todo!();
-    // if let Some(_map) = Arc::try_unwrap(row_lock_storage).ok() {
-    //     return Ok(_RowLockStorage::(_map)?);
-    // }
+
+    if let Some(_map) = Arc::try_unwrap(row_lock_storage).ok() {
+        let s = _RowLockStorageHelper::turn(_map);
+        return Ok(s);
+    }
     unreachable!()
 }
-

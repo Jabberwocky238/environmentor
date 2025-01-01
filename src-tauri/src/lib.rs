@@ -86,11 +86,10 @@ async fn FST_scan(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> t
 
     // dont hold the lock while scanning
     let guard = state.lock().unwrap();
-    let mut updater = guard.generater();
+    let updater = guard.generater();
     drop(guard);
 
-    updater.resolve();
-    let new_storage: Storage = updater.into();
+    let new_storage: Storage = updater.consume();
     new_storage.dump("output.csv");
 
     state.lock().unwrap().replace(new_storage);
