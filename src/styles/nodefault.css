@@ -17,3 +17,18 @@ p {
     margin-block-start: 0;
     margin-block-end: 0;
 }
+
+ul {
+    /* padding-inline-start: 0; */
+    list-style-type: none;
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+ol {
+    padding-inline-start: 0;
+    list-style-type: none;
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+

@@ -1,8 +1,4 @@
 
-import Main from "@/views/Main";
-import Setting from "@/views/Setting";
-import History from "@/views/History";
-
 import Notification from "@@/utils/Notification";
 
 import "./styles/App.scss";
@@ -21,13 +17,12 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
   }
 }
 
-function App() {
-  const routes = [
-    { href: "/", title: 'Main' },
-    { href: "/History", title: 'History' },
-    { href: "/setting", title: 'Setting' },
-  ]
+import Main from "@/views/Main";
+import Setting from "@/views/Setting";
+import History from "@/views/History";
+import FSTree from "@/views/FSTree";
 
+function App() {
   useEffect(() => {
     const unlisten = event.listen("notification", (n: any) => {
       console.log("[App useEffect] notification", n);
@@ -38,24 +33,21 @@ function App() {
     }
   }, []);
 
+  const _active = (active: boolean) => (active ? "tab-item-active" : "");
   return (
     <>
       <div className="tab">
-        {routes.map((r) => (
-          <Link key={r.href} className={(active) => (active ? "tab-item-active" : "")} href={r.href}>{r.title}</Link>
-        ))}
+        <Link className={_active} href="/">Main</Link>
+        {/* <Link className={_active} href="/History">History</Link> */}
+        <Link className={_active} href="/FSTree">FSTree</Link>
+        <Link className={_active} href="/Setting">Setting</Link>
       </div>
       <div className="tab-content">
         <Switch>
-          <Route path="/">
-            <Main />
-          </Route>
-          <Route path="/History">
-            <History />
-          </Route>
-          <Route path="/setting">
-            <Setting />
-          </Route>
+          <Route path="/"><Main /></Route>
+          {/* <Route path="/History"><History /></Route> */}
+          <Route path="/FSTree"><FSTree /></Route>
+          <Route path="/Setting"><Setting /></Route>
           {/* Default route in a switch */}
           <Route>
             <h1>404: No such page!</h1>

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 
 import "./styles/root.scss";
+import "./styles/nodefault.css";
 
 const StrictApp = () => (
   <React.StrictMode>

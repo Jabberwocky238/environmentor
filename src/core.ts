@@ -40,19 +40,6 @@ export class EasyStorage implements IEasyStorage {
     }
 }
 
-type EnvHashMap = { [key: string]: string[] };
-type ReceivedData = { env: EnvHashMap, dirty: boolean };
-
-async function flush(): Promise<ReceivedData> {
-    return invoke("flush");
-}
-async function receive_state(): Promise<ReceivedData> {
-    return invoke("send_state")
-}
-async function undo(): Promise<ReceivedData> {
-    return invoke("undo")
-}
-
 interface ITask {
     'AddVariable': { variable: string },
     'DelVariable': { variable: string, values: string[] },
@@ -80,6 +67,30 @@ const TaskAction: ITaskAction = {
     ReorderValue: async (data: ITask['ReorderValue']) => invoke("receive_state", { task: { "ReorderValue": data } }),
 }
 
+type EnvHashMap = { [key: string]: string[] };
+type ReceivedData = { env: EnvHashMap, dirty: boolean };
+
+async function flush(): Promise<ReceivedData> {
+    return invoke("flush");
+}
+async function receive_state(): Promise<ReceivedData> {
+    return invoke("send_state")
+}
+async function undo(): Promise<ReceivedData> {
+    return invoke("undo")
+}
+
+interface TreeNode {
+    name: string;
+    abs_path: string;
+    size: number;
+    scripts_count: number;
+    is_dir: boolean;
+    is_allow: boolean;
+}
+async function FST_get_children(abs_path: string): Promise<TreeNode[]> {
+    return invoke("FST_get_children", { abs_path });
+}
 
 export { flush, TaskAction, receive_state, undo };
 export type { EnvHashMap, ReceivedData };

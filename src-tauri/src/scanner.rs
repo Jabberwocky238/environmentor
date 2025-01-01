@@ -11,8 +11,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 #[test]
 fn test_scan() {
-    let mut s1 = Storage::default();
-    s1.deserialize("output.csv");
+    let mut s1 = Storage::load("output.csv");
     s1.update();
     let cache = Some(&s1.path_map);
     // let cache = None;
@@ -20,7 +19,7 @@ fn test_scan() {
     // let s = multi_thread_walk(None).unwrap();
     let s = single_thread_walk(cache).unwrap();
 
-    s.serialize("output.csv");
+    s.dump("output.csv");
 }
 
 #[derive(Debug, Default)]
@@ -38,7 +37,7 @@ struct NodeRecord {
 type TyNodeRecord = (String, u64, u64, u64, u64);
 
 impl Storage {
-    fn serialize(&self, path: &str) {
+    fn dump(&self, path: &str) {
         let mut keys = self.path_map.keys().cloned().collect::<Vec<String>>();
         keys.sort();
         let file = fs::File::options()
@@ -60,7 +59,10 @@ impl Storage {
             .unwrap();
         }
     }
-    fn deserialize(&mut self, path: &str) {
+    fn load(path: &str) -> Self {
+        if fs::metadata(path).is_err() {
+            return Self::default();
+        }
         let m: HashMap<String, NodeRecord> = csv::Reader::from_path(path)
             .unwrap()
             .deserialize()
@@ -75,7 +77,7 @@ impl Storage {
                 (k, v)
             })
             .collect();
-        self.path_map = m;
+        Self { path_map: m }
     }
 }
 
@@ -125,17 +127,19 @@ impl Storage {
     }
 }
 
-trait Scan {
-    fn consume(self) -> Storage;
-}
-
 // ==================== single thread ====================
 struct _Storage {
     path_2_size: HashMap<String, u64>,
     path_2_scripts: HashMap<String, u64>,
 }
 
-impl Scan for _Storage {
+impl _Storage {
+    pub fn new() -> Self {
+        Self {
+            path_2_size: HashMap::new(),
+            path_2_scripts: HashMap::new(),
+        }
+    }
     fn consume(self) -> Storage {
         let mut path_map = HashMap::new();
         path_map.reserve(self.path_2_size.len());
@@ -152,15 +156,6 @@ impl Scan for _Storage {
             );
         }
         Storage { path_map }
-    }
-}
-
-impl _Storage {
-    pub fn new() -> Self {
-        Self {
-            path_2_size: HashMap::new(),
-            path_2_scripts: HashMap::new(),
-        }
     }
     pub fn load_cache(&mut self, cache: &HashMap<String, NodeRecord>) {
         for (k, v) in cache {
@@ -359,10 +354,10 @@ fn get_modified(path: &str) -> u64 {
 }
 
 fn treat_as_file(path: &PathBuf) -> Result<bool, Box<dyn std::error::Error>> {
-    let filename = path.to_str().unwrap().to_string();
-    if filename.starts_with(".") {
-        return Ok(true);
-    }
+    // let filename = path.to_str().unwrap().to_string();
+    // if filename.starts_with(".") {
+    //     return Ok(true);
+    // }
     // if filename.ends_with("$RECYCLE.BIN") {
     //     return Ok(true);
     // }
