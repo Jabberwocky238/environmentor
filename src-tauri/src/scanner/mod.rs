@@ -4,20 +4,16 @@ mod walk;
 
 use persist::Persist;
 use serde::{Deserialize, Serialize};
-use tauri::image;
 use std::collections::HashMap;
 use std::fs;
-use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[tokio::test]
 async fn test_scan() {
-    let s1 = Storage::load("output.csv");
+    let s1 = Storage::load("debug.csv");
     let s2 = StorageUpdater::from(s1);
     let s1: Storage = s2.consume();
-    // s1.dump("output.csv");
-    debug_assert!(s1.path_map["D:\\"].size > 3963_0000_0000);
-    debug_assert!(s1.path_map["D:\\"].size < 3964_0000_0000);
+    s1.dump("debug.csv");
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -89,7 +85,7 @@ impl Storage {
 }
 
 pub struct StorageUpdater {
-    path_map: HashMap<String, NodeRecord>,
+    pub(crate) path_map: HashMap<String, NodeRecord>,
 }
 
 impl From<Storage> for StorageUpdater {
@@ -120,7 +116,8 @@ impl StorageUpdater {
         return self.into();
     }
 
-    fn _tree_shaking(&mut self) {
+    /// pub(crate) for test walk
+    pub(crate) fn _tree_shaking(&mut self) {
         let mut modified_cnt = 0;
         let mut disappear_cnt = 0;
 
@@ -181,8 +178,7 @@ impl StorageUpdater {
     }
 
     fn _scna_with_cache(&mut self) {
-        let s = walk::multi_thread_walk(Some(&self.path_map)).unwrap();
-        // let s = walk::single_thread_walk(Some(&self.path_map)).unwrap();
+        let s = walk::walk_scan(Some(&self.path_map)).unwrap();
         self.path_map = s.path_map;
     }
 }

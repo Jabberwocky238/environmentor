@@ -90,8 +90,6 @@ async fn FST_scan(app_handle: AppHandle, state: State<'_, Mutex<AppState>>) -> t
     drop(guard);
 
     let new_storage: Storage = updater.consume();
-    new_storage.dump("output.csv");
-
     state.lock().unwrap().replace(new_storage);
     
     let (_, n) = state.lock().unwrap().state(Some(false));

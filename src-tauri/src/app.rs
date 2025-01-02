@@ -158,6 +158,7 @@ impl AppFSTAction for AppState {
     }
 
     fn replace(&mut self, s: Storage) {
+        s.dump("output.csv");
         self.s.replace(s);
     }
 }

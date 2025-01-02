@@ -36,6 +36,9 @@ pub fn treat_as_ignore(path: &PathBuf) -> bool {
     if filename.starts_with("$") {
         return true;
     }
+    if filename.ends_with("Config.Msi") || filename.ends_with("System Volume Information") {
+        return true;
+    }
     false
 }
 
