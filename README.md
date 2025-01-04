@@ -1,40 +1,36 @@
 # Environmentor
+[English](./README.md) | [中文](./README-zh.md)
 
-**Based on [tauri](https://github.com/tauri-apps/tauri)**
+Global environment variable manager
 
-这是一个全局环境变量管理器
++ No UI component library dependencies, **keep purity**
++ Focus on Rust processing, granting this repo with an air of **elegance**
++ **Based on [tauri](https://github.com/tauri-apps/tauri)**
+
+## Features
+
+1. basic CURD, ordering, and `Find in File Explorer`
+2. undo, in case you forget what you have done
+3. (v0.2)optional scanning your disk, in order to find potential or undetected variables (ex. ffmpeg is always contained by **Format Factory** but you generally cannot get access to it directly in command line)
 
 ![alt text](docs/main.png)
 
-## 功能
+## Usage
 
-1. 基本的增删改查和排序
-2. 直接从文件路径获取值
-3. undo，用于防止自己改了但是不知道改了什么
-
-## 使用方法
-
-1. 增删改查直到你想要的结果
+1. CURD until you feel good
 
 ![alt text](docs/usage1.png)
 
-2. 点击flush，以同步至系统
+2. Flush to the disk
 
 ![alt text](docs/usage2.png)
 
-## v0.2 extra
+### Extras
 
-支持扫盘，以观察文件夹大小。
+3. Scan the disk to extract information.
 
-+ caching: 会生成csv文件在app目录下。
-
-目前只支持D盘全盘扫描，后续会支持更细粒度的控制策略。
++ caching: It will generate CSV files in the app directory to speed up the next scan.
 
 ![alt text](docs/fst1.png)
 
-## 碎碎念
-
-目前只支持windows，用法跟原生的一模一样
-
-目前为了安全考虑只开放了操作用户环境变量的权限
-
+At present, only full disk scanning is supported for D drives, and finer grained control strategies will be supported in the future.
