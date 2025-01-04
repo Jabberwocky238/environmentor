@@ -74,7 +74,9 @@ impl Storage {
             for entry_pathbuf in entries_iter {
                 if let Some(n) = self.path_map.get(entry_pathbuf.to_str().unwrap()) {
                     children.push((entry_pathbuf, n.clone()))
-                };
+                } else {
+                    children.push((entry_pathbuf, NodeRecord::default()))
+                }
             }
         }
         children

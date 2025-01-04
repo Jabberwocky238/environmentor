@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useEffect, useState } from "react";
+import { createRef, useEffect, useState } from "react";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
 import { FST_get_children as _FST_get_children, FST_scan as _FST_scan, FST_state as _FST_state } from '@/core';
 
@@ -67,19 +67,34 @@ const useStore = create<IStore>((set, _) => ({
     }
 }));
 
-function TreeView({ node, style }: { node: TreeNode, style?: React.CSSProperties }) {
+interface ITreeView {
+    style?: React.CSSProperties;
+    node: TreeNode;
+    align: (dom: HTMLElement) => void;
+}
+
+function TreeView({ node, style, align }: ITreeView) {
     const [open, setOpen] = useState(false);
-    const { choose } = useStore();
+    const { chosen, choose } = useStore();
+    const thisTree = createRef<HTMLLIElement>();
 
     const click = () => {
         choose(node);
+    }
+    const doubleClick = () => {
         setOpen(!open)
+        align(thisTree.current!);
     }
     return (
         <ul style={style}>
-            <li onClick={click}>{node.name}</li>
+            <li ref={thisTree}
+                onDoubleClick={doubleClick}
+                onClick={click}
+                className={chosen?.name == node.name ? "chosen" : ""}>
+                {node.isDir ? "📁" : "📄"}{node.name}
+            </li>
             {node.children?.map((child, i) => (
-                <TreeView key={i} style={{ display: open ? "block" : "none" }} node={child} />
+                <TreeView key={i} style={{ display: open ? "block" : "none" }} node={child} align={align} />
             ))}
         </ul>
     );
@@ -87,26 +102,20 @@ function TreeView({ node, style }: { node: TreeNode, style?: React.CSSProperties
 
 function Details({ chosen }: { chosen: TreeNode }) {
     const show_size = (size: number) => {
-        if (size < 1024) {
-            return <p>{chosen.size.toFixed(3)} bytes</p>;
+        const SIZES = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let i = 0;
+        while (size > 1024) {
+            size /= 1024;
+            i++;
         }
-        size /= 1024;
-        if (size < 1024) {
-            return <p>{size.toFixed(3)} KB</p>;
-        }
-        size /= 1024;
-        if (size < 1024) {
-            return <p>{size.toFixed(3)} MB</p>;
-        }
-        size /= 1024;
-        return <p>{size.toFixed(3)} GB</p>;
+        return `${size.toFixed(2)} ${SIZES[i]}`;
     }
     return (
-        <div>
+        <div className="details">
             <h2>{chosen.name}</h2>
             <p>{chosen.absPath}</p>
             <p>{chosen.size} bytes</p>
-            {show_size(chosen.size)}
+            <p>{show_size(chosen.size)}</p>
             <p>{chosen.scriptsCount} scripts</p>
             <p>{chosen.isDir ? "Directory" : "File"}</p>
             <p>{chosen.isAllow ? "Allow" : "Deny"}</p>
@@ -121,6 +130,7 @@ function Details({ chosen }: { chosen: TreeNode }) {
 export default function () {
     const { chosen, tree, scan: _scan, init, getState } = useStore();
     const [showMask, setShowMask] = useState(false);
+    const scrollContainer = createRef<HTMLDivElement>();
 
     useEffect(() => {
         getState().then((busy) => {
@@ -137,13 +147,34 @@ export default function () {
         setShowMask(false);
     }
 
+    function autoAlign(element: HTMLElement) {
+        // 获取点击元素的位置
+        const rect = element.getBoundingClientRect();
+        const x = rect.left;
+        // const y = rect.top;
+
+        // 获取滚动容器的位置
+        const containerRect = scrollContainer.current!.getBoundingClientRect();
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const containerX = containerRect.left;
+        // const containerY = containerRect.top;
+
+        // 计算需要滚动的距离
+        const scrollX = x - containerX - 2 * rem;
+        // const scrollY = y - containerY;
+
+        // 调整滚动条位置
+        scrollContainer.current!.scrollLeft += scrollX;
+        // scrollContainer.current!.scrollTop += scrollY;
+    }
+
     return (
         <div className="row">
             <div className="col" style={{ '--col-width': '60%' } as React.CSSProperties}>
                 <div className="list">
-                    <div className="tree-view-container">
+                    <div ref={scrollContainer} className="tree-view-container">
                         {tree.map((node, _i) => (
-                            <TreeView style={{ paddingInlineStart: 0 }} node={node} />
+                            <TreeView style={{ paddingInlineStart: 0 }} node={node} align={autoAlign} />
                         ))}
                     </div>
                 </div>

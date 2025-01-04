@@ -1,12 +1,5 @@
-use crossbeam::queue::SegQueue;
-use crossbeam::scope;
-use dashmap::DashMap;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
 
 use crate::scanner::NodeRecord;
 

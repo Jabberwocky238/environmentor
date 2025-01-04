@@ -1,13 +1,26 @@
 ul {
+    user-select: none; /* CSS 属性防止文本选择 */
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    
     width: inherit;
     padding-inline-start: 2rem;
-
     cursor: pointer;
 
     li {
+        border-radius: var(--radius-border);
         width: inherit;
+        text-indent: 0.5rem;
+
+        &.chosen {
+            color: var(--color-shine);
+            font-weight: bold;
+        }
+
         &:hover {
-            background-color: blue;
+            transition: background-color 0.1s;
+            background-color: var(--color-active);
         }
     }
 }
@@ -42,6 +55,10 @@ ul {
     &::-webkit-scrollbar-corner {
         background-color: transparent;
     }
+}
+
+.details {
+    padding: var(--common-padding);
 }
 
 .FSTreeMask {

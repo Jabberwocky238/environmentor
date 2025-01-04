@@ -19,6 +19,7 @@
     color: var(--color-light);
     background-color: var(--color-dark);
 
+    --common-padding: 8px;
     --radius-border: 8px;
 }
 
@@ -97,15 +98,15 @@ body,
         strong,
         p,
         button {
-            padding: 8px;
+            padding: var(--common-padding);
         }
 
         &>*:first-child {
-            padding-left: 8px;
+            padding-left: var(--common-padding);
         }
 
         &>*:last-child {
-            padding-right: 8px;
+            padding-right: var(--common-padding);
         }
     }
 }
@@ -152,7 +153,7 @@ button {
     }
 
     button {
-        padding: 8px;
+        padding: var(--common-padding);
         flex-grow: 1;
     }
 }
