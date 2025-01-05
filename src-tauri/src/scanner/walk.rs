@@ -10,33 +10,40 @@ use super::utils::{
     get_drives, get_modified, pure_walk, treat_as_file, treat_as_ignore, treat_as_script,
 };
 use super::{NodeRecord, Storage};
+const THREADS: usize = 4;
 
-// C: 123.02s, 1442000
-// D: 45.07s, 864000
-const TEST_DRIVE: &str = "C:\\";
-#[tokio::test]
-async fn test_walk_scan() {
-    let s1 = Storage::load("debug.csv");
-    let mut s2 = super::StorageUpdater::from(s1);
-    s2._tree_shaking();
+#[cfg(test)]
+mod test_walk {
+    use super::*;
 
-    // 145.19s
-    // let s = single_thread_walk(Some(&s2.path_map)).unwrap();
-    // 45.07s
-    let s = multi_thread_walk(Some(&s2.path_map)).unwrap();
+    #[test]
+    fn no_cache_single() {
+        let start = vec!["D:\\Scoop".into()];
+        let s = single_thread_walk(start, None).unwrap();
+        println!("no_cache_single done with {}", s["D:\\Scoop"].size);
+        // 6634756838
+    }
 
-    dbg!(s.path_map[TEST_DRIVE].size);
-    // D
-    // debug_assert!(s.path_map[TEST_DRIVE].size > 3963_0000_0000);
-    // debug_assert!(s.path_map[TEST_DRIVE].size < 3964_0000_0000);
+    #[test]
+    fn no_cache_parallel() {
+        let start = vec!["D:\\Scoop".into()];
+        // let start = vec!["D:\\".into()];
+        let s = multi_thread_walk(start, None).unwrap();
+        println!("no_cache_parallel done with {}", s["D:\\Scoop"].size);
+        // 6634756838
+    }
 }
 
 pub fn walk_scan(
     cache: Option<&HashMap<String, NodeRecord>>,
 ) -> Result<Storage, Box<dyn std::error::Error>> {
-    // let s = single_thread_walk(cache).unwrap();
-    let s = multi_thread_walk(cache).unwrap();
-    Ok(s)
+    let drives = get_drives();
+    let s = single_thread_walk(drives, cache).unwrap();
+    // let s = multi_thread_walk(cache).unwrap();
+    Ok(Storage {
+        path_map: s,
+        updating: false,
+    })
 }
 // ==================== single thread ====================
 #[derive(Debug, Default)]
@@ -45,40 +52,36 @@ struct _Storage {
 }
 
 impl _Storage {
-    fn consume(self) -> Storage {
-        println!("consume: {} records", self._map.len());
-        Storage {
-            path_map: self._map,
-            updating: false,
-        }
+    fn consume(self) -> HashMap<String, NodeRecord> {
+        self._map
     }
-    pub fn load_cache(&mut self, cache: &HashMap<String, NodeRecord>) {
+    pub fn merge(&mut self, cache: &HashMap<String, NodeRecord>) {
         for (k, v) in cache {
             self._map.insert(k.to_owned(), v.clone());
         }
     }
-    pub fn accumulate(&mut self, path: &PathBuf, add_size: u64, add_scripts: u64) {
+    pub fn accumulate(&mut self, path: &PathBuf, adder: NodeRecord) {
         // 先尝试添加自己
         let path_string = path.to_str().unwrap().to_string();
-        let last_modified = get_modified(&path_string);
         self._map
             .entry(path_string)
             .and_modify(|e| {
-                e.size += add_size;
-                e.last_modified = last_modified;
-                e.script_count += add_scripts;
-                e.is_allowed = true;
+                *e += adder.clone();
             })
-            .or_insert(NodeRecord::with(add_size, last_modified, add_scripts, true));
+            .or_insert(adder.clone());
 
         // recursive call parent to accumulate the size
         let parent = match path.parent() {
             Some(p) => p,
             None => return, // root has no parent
         };
-        self.accumulate(&parent.to_path_buf(), add_size, add_scripts);
-        if self._map.len() % 10000 == 0 {
-            println!("accumulate: {} records", self._map.len());
+        self.accumulate(&parent.to_path_buf(), adder);
+
+        #[cfg(debug_assertions)]
+        {
+            if self._map.len() % 10000 == 0 {
+                println!("accumulate: {} records", self._map.len());
+            }
         }
     }
     pub fn not_allowed(&mut self, path: &PathBuf) {
@@ -98,24 +101,21 @@ impl _Storage {
 
 // 递归改循环
 fn single_thread_walk(
+    start_points: Vec<PathBuf>,
     cache: Option<&HashMap<String, NodeRecord>>,
-) -> Result<Storage, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, NodeRecord>, Box<dyn std::error::Error>> {
     let readonly_cache = match cache {
         Some(c) => c,
         None => &HashMap::new(),
     };
     let mut storage = _Storage::default();
-    storage.load_cache(readonly_cache);
-
-    #[cfg(not(debug_assertions))]
-    let mut stack: Vec<PathBuf> = get_drives();
-    #[cfg(debug_assertions)]
-    let mut stack: Vec<PathBuf> = vec![TEST_DRIVE.into()];
+    storage.merge(readonly_cache);
+    let mut stack: Vec<PathBuf> = start_points;
 
     while let Some(__path) = stack.pop() {
         // 如果是缓存的目录，则直接累加
         if let Some(v) = readonly_cache.get(__path.to_str().unwrap()) {
-            storage.accumulate(&__path, v.size, v.script_count);
+            storage.accumulate(&__path, v.clone());
             continue;
         }
         if let Ok(entries) = fs::read_dir(&__path) {
@@ -127,25 +127,16 @@ fn single_thread_walk(
             for entry_pathbuf in entries_iter {
                 // 如果是缓存的目录，则直接累加
                 if let Some(v) = readonly_cache.get(entry_pathbuf.to_str().unwrap()) {
-                    storage.accumulate(&entry_pathbuf, v.size, v.script_count);
+                    storage.accumulate(&entry_pathbuf, v.clone());
+                    continue;
+                }
+                if !treat_as_file(&entry_pathbuf) && entry_pathbuf.is_dir() {
+                    stack.push(entry_pathbuf.clone());
                     continue;
                 }
                 // 如果是目录，则递归遍历
-                let _size = if treat_as_file(&entry_pathbuf) {
-                    pure_walk(&entry_pathbuf)?
-                } else {
-                    // common file or directory
-                    if entry_pathbuf.is_dir() {
-                        stack.push(entry_pathbuf.to_owned());
-                    }
-                    fs::metadata(&entry_pathbuf)?.len()
-                };
-                let _script = if treat_as_script(&entry_pathbuf) {
-                    1
-                } else {
-                    0
-                };
-                storage.accumulate(&entry_pathbuf, _size, _script);
+                let adder = NodeRecord::from_path(&entry_pathbuf);
+                storage.accumulate(&entry_pathbuf, adder);
             }
         } else {
             println!("Failed to open directory: {:?}", &__path);
@@ -165,41 +156,28 @@ type RowLockStorage = DashMap<String, NodeRecord>;
 struct _RowLockStorageHelper;
 
 impl _RowLockStorageHelper {
-    pub fn accumulate(map: Arc<RowLockStorage>, path: &PathBuf, add_size: u64, add_scripts: u64) {
-        // 先尝试添加自己
-        // println!("accumulate: {:?}", path);
+    pub fn accumulate(map: Arc<RowLockStorage>, path: &PathBuf, adder: NodeRecord) {
+        // #[cfg(debug_assertions)]
+        // {
+        //     let len = map.len();
+        //     if len % 1000 == 0 {
+        //         println!("accumulate: {} records", len);
+        //     }
+        // }
         let path_string = path.to_str().unwrap().to_string();
-        let last_modified = get_modified(&path_string);
 
-        map
-            // .write()
-            // .unwrap()
-            .entry(path_string)
+        map.entry(path_string)
             .and_modify(|e| {
-                e.size += add_size;
-                e.last_modified = last_modified;
-                e.script_count += add_scripts;
-                e.is_allowed = true;
+                *e += adder.clone();
             })
-            .or_insert(NodeRecord::with(add_size, last_modified, add_scripts, true));
+            .or_insert(adder.clone());
         // println!("accumulate end: {:?}", path);
         // recursive call parent to accumulate the size
         let parent = match path.parent() {
             Some(p) => p,
             None => return, // root has no parent
         };
-        // println!("accumulate parent: {:?}", parent);
-        // let len = map.read().unwrap().len();
-
-        #[cfg(debug_assertions)]
-        {
-            let len = map.len();
-            if len % 1000 == 0 {
-                println!("accumulate: {} records", len);
-            }
-        }
-
-        _RowLockStorageHelper::accumulate(map, &parent.to_path_buf(), add_size, add_scripts);
+        _RowLockStorageHelper::accumulate(map, &parent.to_path_buf(), adder);
     }
     pub fn load_cache(map: &mut RowLockStorage, cache: &HashMap<String, NodeRecord>) {
         // let mut guard = map.write().unwrap();
@@ -215,10 +193,7 @@ impl _RowLockStorageHelper {
     pub fn not_allowed(map: Arc<RowLockStorage>, path: &PathBuf) {
         let path_string = path.to_str().unwrap().to_string();
         let last_modified = get_modified(&path_string);
-        map
-            // .write()
-            // .unwrap()
-            .entry(path_string.to_owned())
+        map.entry(path_string.to_owned())
             .and_modify(|e| {
                 e.size = 0;
                 e.last_modified = last_modified;
@@ -227,38 +202,31 @@ impl _RowLockStorageHelper {
             })
             .or_insert(NodeRecord::with(0, last_modified, 0, false));
     }
-    pub fn turn(map: RowLockStorage) -> Storage {
+    pub fn turn(map: RowLockStorage) -> HashMap<String, NodeRecord> {
         // let _map = map.into_inner().unwrap();
-        let _map = map.into_iter().collect();
-        Storage {
-            path_map: _map,
-            updating: false,
-        }
+        map.into_iter().collect()
     }
 }
 
 fn multi_thread_walk(
+    start_points: Vec<PathBuf>,
     cache: Option<&HashMap<String, NodeRecord>>,
-) -> Result<Storage, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, NodeRecord>, Box<dyn std::error::Error>> {
     let cache = match cache {
         Some(c) => c,
         None => &HashMap::new(),
     };
     let cache = cache.clone();
-
-    const THREADS: usize = 8;
-    #[cfg(not(debug_assertions))]
-    let roots: Vec<PathBuf> = get_drives();
-    #[cfg(debug_assertions)]
-    let roots: Vec<PathBuf> = vec![TEST_DRIVE.into()];
+    let start_points: Vec<PathBuf> = start_points;
     let q_walk = SegQueue::new();
-    for root in roots {
+    for root in start_points {
         q_walk.push(root);
     }
 
     let mut row_lock_storage = RowLockStorage::default();
     _RowLockStorageHelper::load_cache(&mut row_lock_storage, &cache);
     let row_lock_storage = Arc::new(row_lock_storage);
+
     // readonly cache is used for searching, it will not be modified
     // if we use row_lock_storage as cache directly, we either need to clone the item or cause deadlock.
     // to avoid scattering additional clone, readonly_cache takes place.
@@ -305,8 +273,7 @@ fn multi_thread_walk(
                         _RowLockStorageHelper::accumulate(
                             Arc::clone(&_row_lock_storage),
                             &__path,
-                            v.size,
-                            v.script_count,
+                            v.clone(),
                         );
                         continue;
                     }
@@ -326,35 +293,23 @@ fn multi_thread_walk(
                                 _RowLockStorageHelper::accumulate(
                                     Arc::clone(&_row_lock_storage),
                                     &entry_pathbuf,
-                                    v.size,
-                                    v.script_count,
+                                    v.clone(),
                                 );
                                 continue;
                             }
                             // println!("Thread {} no cache hitted: {:?}", t_index, &entry_pathbuf);
                             // no cache hitted
-                            let _size = if treat_as_file(&entry_pathbuf) {
-                                pure_walk(&entry_pathbuf).unwrap()
-                            } else {
-                                // common file or directory
-                                if entry_pathbuf.is_dir() {
-                                    let (lock, cvar) = &*_q_walk;
-                                    lock.lock().unwrap().push(entry_pathbuf.to_owned());
-                                    // _q_walk.push(entry_pathbuf.to_owned());
-                                }
-                                fs::metadata(&entry_pathbuf).unwrap().len()
-                            };
-                            let _script = if treat_as_script(&entry_pathbuf) {
-                                1
-                            } else {
-                                0
-                            };
+                            if !treat_as_file(&entry_pathbuf) && entry_pathbuf.is_dir() {
+                                let (lock, cvar) = &*_q_walk;
+                                lock.lock().unwrap().push(entry_pathbuf.to_owned());
+                                continue;
+                            }
+                            let adder = NodeRecord::from_path(&entry_pathbuf);
                             // println!("Thread {} accumulate: {:?}", t_index, &entry_pathbuf);
                             _RowLockStorageHelper::accumulate(
                                 Arc::clone(&_row_lock_storage),
                                 &entry_pathbuf,
-                                _size,
-                                _script,
+                                adder,
                             );
                             // println!("Thread {} accumulate end: {:?}", t_index, &entry_pathbuf);
                         }

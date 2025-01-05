@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 // ==================== common functions ====================
+
+#[inline]
 pub fn now() -> u64 {
     // current timestamp
     std::time::SystemTime::now()
@@ -10,6 +12,7 @@ pub fn now() -> u64 {
         .as_secs()
 }
 
+#[inline]
 pub fn get_modified(path: &str) -> u64 {
     fs::metadata(path)
         .unwrap()
@@ -20,6 +23,7 @@ pub fn get_modified(path: &str) -> u64 {
         .as_secs()
 }
 
+#[inline]
 pub fn treat_as_file(path: &PathBuf) -> bool {
     // let filename = path.to_str().unwrap().to_string();
     // if filename.starts_with(".") {
@@ -31,6 +35,7 @@ pub fn treat_as_file(path: &PathBuf) -> bool {
     false
 }
 
+#[inline]
 pub fn treat_as_ignore(path: &PathBuf) -> bool {
     let filename = path.file_name().unwrap().to_str().unwrap().to_string();
     if filename.starts_with("$") {
@@ -48,6 +53,7 @@ fn test_treat_as_ignore() {
     assert_eq!(treat_as_ignore(&path), true);
 }
 
+#[inline]
 pub fn treat_as_script(path: &PathBuf) -> bool {
     const SCRIPT_EXTENSIONS: [&str; 5] = [".exe", ".dll", ".bat", ".vbs", ".ps1"];
     let filename = path.to_str().unwrap().to_string();
@@ -59,6 +65,7 @@ pub fn treat_as_script(path: &PathBuf) -> bool {
     false
 }
 
+#[inline]
 pub fn pure_walk(path: &PathBuf) -> Result<u64, Box<dyn std::error::Error>> {
     let mut stack: Vec<PathBuf> = vec![path.into()];
     let mut size = fs::metadata(path)?.len();

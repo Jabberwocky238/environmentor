@@ -6,6 +6,7 @@ use persist::Persist;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::ops::AddAssign;
 use std::path::PathBuf;
 
 #[tokio::test]
@@ -23,6 +24,14 @@ pub struct NodeRecord {
     pub script_count: u64,
     pub is_allowed: bool,
 }
+
+impl AddAssign for NodeRecord {
+    fn add_assign(&mut self, other: Self) {
+        self.size += other.size;
+        self.script_count += other.script_count;
+    }
+}
+
 impl NodeRecord {
     pub fn with(size: u64, last_modified: u64, script_count: u64, is_allowed: bool) -> Self {
         Self {
@@ -31,6 +40,16 @@ impl NodeRecord {
             script_count,
             is_allowed,
         }
+    }
+    pub fn from_path(p: &PathBuf) -> Self {
+        let _modified = utils::get_modified(p.to_str().unwrap());
+        let _size = if utils::treat_as_file(&p) {
+            utils::pure_walk(&p).unwrap()
+        } else {
+            fs::metadata(&p).unwrap().len()
+        };
+        let _script = if utils::treat_as_script(&p) { 1 } else { 0 };
+        Self::with(_size, _modified, _script, true)
     }
 }
 
@@ -92,13 +111,18 @@ pub struct StorageUpdater {
 
 impl From<Storage> for StorageUpdater {
     fn from(s: Storage) -> Self {
-        Self { path_map: s.path_map }
+        Self {
+            path_map: s.path_map,
+        }
     }
 }
 
 impl Into<Storage> for StorageUpdater {
     fn into(self) -> Storage {
-        Storage { path_map: self.path_map, updating: false }
+        Storage {
+            path_map: self.path_map,
+            updating: false,
+        }
     }
 }
 

@@ -8,12 +8,8 @@ use app::AppState;
 use app::SendState;
 use app::TreeNode;
 use scanner::Storage;
-use tauri::http::response;
 use tauri::WindowEvent;
-use tauri::Wry;
 
-use std::fs;
-use std::path::PathBuf;
 use std::sync::Mutex;
 use task::TaskLogData;
 use tauri::menu::{Menu, MenuItem};
