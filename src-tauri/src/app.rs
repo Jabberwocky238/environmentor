@@ -82,11 +82,8 @@ impl AppState {
         let mut tm = TaskManager::default();
         tm.init().unwrap();
 
-        Self { tm, s: Storage::load("output.csv") }
+        Self { tm, s: Storage::load("output8.csv") }
     } 
-    pub fn exit(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
-    }
 }
 
 impl AppTaskAction for AppState {
@@ -153,8 +150,7 @@ impl AppFSTAction for AppState {
     }
 
     fn generater(&self) -> StorageUpdater {
-        let updater: StorageUpdater = self.s.clone().into();
-        updater
+        self.s.clone().into()
     }
 
     fn replace(&mut self, s: Storage) {

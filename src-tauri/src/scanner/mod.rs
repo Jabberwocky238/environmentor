@@ -131,7 +131,7 @@ impl StorageUpdater {
         println!("[StorageUpdater] update start");
         let time1 = utils::now();
         // remove out-dated records
-        self._tree_shaking();
+        tree_shaking(&mut self.path_map);
         let time2 = utils::now();
         println!("[StorageUpdater] tree_shaking: {}s", time2 - time1);
         println!("[StorageUpdater] scan_with_cache start");
@@ -142,69 +142,67 @@ impl StorageUpdater {
         return self.into();
     }
 
-    /// pub(crate) for test walk
-    pub(crate) fn _tree_shaking(&mut self) {
-        let mut modified_cnt = 0;
-        let mut disappear_cnt = 0;
-
-        let mut descendent_keys = self.path_map.keys().cloned().collect::<Vec<String>>();
-        // sort by length, so that we can remove the shortest path first
-        descendent_keys.sort_by(|a, b| b.len().cmp(&a.len()).reverse());
-
-        let mut wait_list: Vec<PathBuf> = vec![];
-        // former200
-        for i in 0..200 {
-            if let Some(k) = descendent_keys.get(i) {
-                wait_list.push(PathBuf::from(k));
-            }
-        }
-        while let Some(k) = wait_list.pop() {
-            if !k.exists() {
-                // everything start with k will be removed
-                let prefix = k.to_str().unwrap();
-                let keys_to_remove: Vec<String> = self
-                    .path_map
-                    .keys()
-                    .cloned()
-                    .filter(|s| s.starts_with(prefix))
-                    .collect();
-                disappear_cnt += keys_to_remove.len();
-                for key in keys_to_remove {
-                    self.path_map.remove(&key);
-                }
-                continue;
-            }
-            let p = k.to_str().unwrap();
-            let last_modified1 = utils::get_modified(p);
-            let last_modified2 = self.path_map.get(p).unwrap().last_modified;
-
-            if last_modified1 != last_modified2 {
-                self.path_map.remove(p);
-                // 直系child
-                let children: Vec<String> = self
-                    .path_map
-                    .keys()
-                    .cloned()
-                    .filter(|s| {
-                        let p = PathBuf::from(s);
-                        p.parent().unwrap() == k
-                    })
-                    .collect();
-                for child in children {
-                    wait_list.push(child.into());
-                }
-                modified_cnt += 1;
-            }
-        }
-
-        println!(
-            "[StorageUpdater] tree_shaking: modified: {}, disappear: {}",
-            modified_cnt, disappear_cnt
-        );
-    }
-
     fn _scna_with_cache(&mut self) {
-        let s = walk::walk_scan(Some(&self.path_map)).unwrap();
-        self.path_map = s.path_map;
+        self.path_map = walk::walk_scan(Some(&self.path_map)).unwrap();
     }
+}
+
+/// pub(crate) for test walk
+/// TODO: need a more efficient data structure to search parent
+pub(crate) fn tree_shaking(path_map: &mut HashMap<String, NodeRecord>) {
+    let mut modified_cnt = 0;
+    let mut disappear_cnt = 0;
+
+    let mut descendent_keys = path_map.keys().cloned().collect::<Vec<String>>();
+    // sort by length, so that we can remove the shortest path first
+    descendent_keys.sort_by(|a, b| b.len().cmp(&a.len()).reverse());
+
+    let mut wait_list: Vec<PathBuf> = vec![];
+    // former200
+    for i in 0..200 {
+        if let Some(k) = descendent_keys.get(i) {
+            wait_list.push(PathBuf::from(k));
+        }
+    }
+    while let Some(k) = wait_list.pop() {
+        if !k.exists() {
+            // everything start with k will be removed
+            let prefix = k.to_str().unwrap();
+            let keys_to_remove: Vec<String> = path_map
+                .keys()
+                .cloned()
+                .filter(|s| s.starts_with(prefix))
+                .collect();
+            disappear_cnt += keys_to_remove.len();
+            for key in keys_to_remove {
+                path_map.remove(&key);
+            }
+            continue;
+        }
+        let p = k.to_str().unwrap();
+        let last_modified1 = utils::get_modified(p);
+        let last_modified2 = path_map.get(p).unwrap().last_modified;
+
+        if last_modified1 != last_modified2 {
+            path_map.remove(p);
+            // 直系child
+            let children: Vec<String> = path_map
+                .keys()
+                .cloned()
+                .filter(|s| {
+                    let p = PathBuf::from(s);
+                    p.parent().unwrap() == k
+                })
+                .collect();
+            for child in children {
+                wait_list.push(child.into());
+            }
+            modified_cnt += 1;
+        }
+    }
+
+    println!(
+        "[StorageUpdater] tree_shaking: modified: {}, disappear: {}",
+        modified_cnt, disappear_cnt
+    );
 }

@@ -3,22 +3,23 @@ use crossbeam::scope;
 use dashmap::DashMap;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Condvar, Mutex, RwLock};
-use std::{fs, thread};
+use std::sync::{Arc, Condvar, Mutex};
+use std::fs;
 
 use super::utils::{
-    get_drives, get_modified, pure_walk, treat_as_file, treat_as_ignore, treat_as_script,
+    get_drives, get_modified, treat_as_file, treat_as_ignore,
 };
-use super::{NodeRecord, Storage};
+use super::NodeRecord;
 const THREADS: usize = 4;
 
 #[cfg(test)]
 mod test_walk {
     use super::*;
+    use crate::scanner::{tree_shaking, Storage};
 
     #[test]
     fn no_cache_single() {
-        let start = vec!["D:\\Scoop".into()];
+        let start = vec!["D:\\Scoop".into()]; // 5.39s
         let s = single_thread_walk(start, None).unwrap();
         println!("no_cache_single done with {}", s["D:\\Scoop"].size);
         // 6634756838
@@ -26,9 +27,33 @@ mod test_walk {
 
     #[test]
     fn no_cache_parallel() {
-        let start = vec!["D:\\Scoop".into()];
-        // let start = vec!["D:\\".into()];
+        let start = vec!["D:\\Scoop".into()]; // 2.14s
+                                              // let start = vec!["D:\\".into()]; // 25s
         let s = multi_thread_walk(start, None).unwrap();
+        println!("no_cache_parallel done with {}", s["D:\\Scoop"].size);
+        // 6634756838
+    }
+
+    #[test]
+    fn with_cache_single() {
+        let cache_s = Storage::load("output.csv");
+        let mut cache = cache_s.path_map;
+        tree_shaking(&mut cache);
+
+        let start = vec!["D:\\Scoop".into()]; // 3.25s
+        let s = single_thread_walk(start, Some(&cache)).unwrap();
+        println!("no_cache_single done with {}", s["D:\\Scoop"].size);
+        // 10930490222 wrong
+    }
+
+    #[test]
+    fn with_cache_parallel() {
+        let cache_s = Storage::load("output.csv");
+        let mut cache = cache_s.path_map;
+        tree_shaking(&mut cache);
+
+        let start = vec!["D:\\Scoop".into()]; // 4.66s
+        let s = multi_thread_walk(start, Some(&cache)).unwrap();
         println!("no_cache_parallel done with {}", s["D:\\Scoop"].size);
         // 6634756838
     }
@@ -36,14 +61,11 @@ mod test_walk {
 
 pub fn walk_scan(
     cache: Option<&HashMap<String, NodeRecord>>,
-) -> Result<Storage, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, NodeRecord>, Box<dyn std::error::Error>> {
     let drives = get_drives();
     let s = single_thread_walk(drives, cache).unwrap();
     // let s = multi_thread_walk(cache).unwrap();
-    Ok(Storage {
-        path_map: s,
-        updating: false,
-    })
+    Ok(s)
 }
 // ==================== single thread ====================
 #[derive(Debug, Default)]

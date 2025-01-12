@@ -17,7 +17,7 @@ function backendEventResolver(n: { event: string, id: number, payload: any }) {
   }
 }
 
-import Main from "@/views/Main";
+import Main from "@@/Main";
 import Setting from "@/views/Setting";
 import FSTree from "@/views/FSTree";
 
