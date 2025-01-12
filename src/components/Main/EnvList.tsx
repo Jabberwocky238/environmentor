@@ -1,21 +1,18 @@
-import type { EnvHashMap } from "@/core";
 import Modal from '@@/utils/Modal';
-import '@/styles/Main.scss';
 
-import { create } from "zustand";
-import { MouseEventHandler, useEffect, useState } from "react";
-import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo, emitter } from "@/core";
-import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
+import { useEffect, useState } from "react";
+import { emitter } from "@/core";
+import { ask as tauri_ask } from '@tauri-apps/plugin-dialog';
 import { INotification } from "@@/utils/Notification";
-import { Checkmark, Delete, Down, FromFS, Up } from "@@/utils/Icons";
-import { useStore } from "./store";
+import { Checkmark } from "@@/utils/Icons";
+import { action, useStore } from "./store";
 
 export default function EnvList() {
     const [envKeys, setEnvKeys] = useState<string[]>([]);
     const [buffer, setBuffer] = useState<string>("");
     const [isAdding, setAdding] = useState<boolean>(false);
 
-    const { envs, currentVariable, switchVariable, addVariable, deleteVariable } = useStore();
+    const { envs, currentVariable, switchVariable } = useStore();
 
     useEffect(() => {
         const _envKeys = Object.keys(envs).sort();
@@ -27,9 +24,9 @@ export default function EnvList() {
     }, [envs]);
 
     const btnDelete = () => {
-        _ask(`Are you sure to delete the variable '${currentVariable}'?`).then((res) => {
+        tauri_ask(`Are you sure to delete the variable '${currentVariable}'?`).then((res) => {
             if (!res) return;
-            deleteVariable(currentVariable);
+            action.variable.remove(currentVariable);
             switchVariable(envKeys[0]);
         });
     }
@@ -63,7 +60,7 @@ export default function EnvList() {
                     />
                     <button onClick={() => {
                         if (isEnglishAndNumbers(buffer)) {
-                            addVariable(buffer);
+                            action.variable.add(buffer);
                             setAdding(false);
                             setBuffer("");
                         } else {

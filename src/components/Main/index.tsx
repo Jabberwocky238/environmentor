@@ -1,20 +1,11 @@
-import type { EnvHashMap } from "@/core";
-import Modal from '@@/utils/Modal';
 import '@/styles/Main.scss';
 
-import { create } from "zustand";
 import { MouseEventHandler, useEffect, useState } from "react";
 import { flush as _flush, TaskAction, receive_state as _receive_state, undo as _undo, emitter } from "@/core";
 import { open as _open, ask as _ask } from '@tauri-apps/plugin-dialog';
-import { INotification } from "@@/utils/Notification";
-import { Checkmark, Delete, Down, FromFS, Up } from "@@/utils/Icons";
 import { useStore } from "./store";
 import EnvList from "./EnvList";
 import ValueList from "./ValueList";
-
-// ============
-// ==== UI ====
-// ============
 
 export default function Main(props: { style?: React.CSSProperties }) {
     const { style } = props;

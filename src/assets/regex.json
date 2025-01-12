@@ -1,0 +1,34 @@
+[
+    {
+        "name": "TMP",
+        "regex": ["TMP", "TEMP"],
+        "description": "The **TMP** environment variable is used to specify the location in which programs can store temporary files. The temporary files are usually deleted after the program exits.",
+        "caseSensitive": true
+    },
+    {
+        "name": "PATH",
+        "regex": ["PATH", "Path"],
+        "description": "The **PATH** environment variable is used to specify a set of directories where executable programs are located. The PATH variable is used by the command processor to find the programs.",
+        "caseSensitive": true
+    },
+    {
+        "name": "Conda",
+        "regex": ["ANACONDA"],
+        "description": "Anaconda is a free and open-source distribution of the Python and R programming languages for scientific computing, that aims to simplify package management and deployment.",
+        "caseSensitive": true
+    },
+    {
+        "name": "miniforge",
+        "regex": "miniforge3",
+        "description": "Miniforge is a minimal distribution of Anaconda. It is optimized for speed. Because MiniForge is written in C++, it is faster than the official Conda's Python implementation.",
+        "subMatches": [
+            {
+                "name": "condabin",
+                "regex": ["condabin"],
+                "description": "the **condabin** directory in Miniforge contains all the executables.",
+                "caseSensitive": false
+            }
+        ],
+        "caseSensitive": false
+    }
+]

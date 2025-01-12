@@ -12,8 +12,6 @@ use tauri::WindowEvent;
 
 use std::sync::Mutex;
 use task::TaskLogData;
-use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
 use tauri::Emitter;
 use tauri::{AppHandle, Context, Manager, State, Window};
 // #[tauri::command]

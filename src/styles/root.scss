@@ -23,6 +23,10 @@
     --radius-border: 8px;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    padding: var(--common-padding);
+}
+
 @media (prefers-color-scheme: light) {
     :root {
         --color-dark: #f1f1f1;
@@ -71,9 +75,20 @@ body,
     }
 }
 
+.block {
+    display: flex;
+    flex-direction: column;
+
+    border-radius: var(--radius-border);
+    color: var(--color-light);
+    background-color: var(--color-gray);
+}
+
 .list {
-    overflow: scroll;
+    overflow: auto;
     flex-grow: 1; // fill the space if items are less than the height
+    display: flex;
+    flex-direction: column;
 
     border-radius: var(--radius-border);
     color: var(--color-light);
@@ -149,7 +164,8 @@ button {
     justify-content: space-between;
 
     input {
-        flex-grow: 10;
+        text-indent: 0.5rem;
+        flex-grow: 20;
     }
 
     button {
@@ -211,13 +227,13 @@ button {
 }
 
 [data-style=dark].btn-group {
-    button {
+    input, button {
         background-color: var(--color-dark);
     }
 }
 
 [data-style=light].btn-group {
-    button {
+    input, button {
         background-color: var(--color-gray);
     }
 }

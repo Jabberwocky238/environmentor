@@ -1,20 +1,15 @@
 .list {
     .item {
+        text-wrap: nowrap;
+        cursor: grab !important;
+
         &.active {
             background-color: var(--color-active);
         }
-        &.editing {
-            border: unset;
-            background-color: var(--color-dark);
-            
-            button {
-                border-radius: var(--radius-border);
-                background-color: inherit;
-            }
-            input {
-                color: inherit;
-                flex-grow: 1;
-            }
-        }
     }
+}
+
+.block {
+    min-height: 250px;
+    max-height: 800px;
 }

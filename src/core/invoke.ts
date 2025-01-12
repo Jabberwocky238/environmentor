@@ -1,45 +1,5 @@
+
 import { invoke } from "@tauri-apps/api/core";
-import mitt from "mitt";
-import { INotification } from "./components/utils/Notification";
-
-interface IEventType {
-    "notification": INotification,
-}
-
-type IEmitter = {
-    [K in keyof IEventType]: IEventType[K];
-};
-
-export const emitter = mitt<IEmitter>();
-
-interface ISetting {
-    "theme": "light" | "dark" | "system";
-    "toastTimeout": string;
-}
-
-type IEasyStorage = {
-    set<K extends keyof ISetting>(key: K, value: ISetting[K]): void,
-    get<K extends keyof ISetting>(key: K): ISetting[K],
-}
-
-// 存个JB，直接往localstorage里面放
-export class EasyStorage implements IEasyStorage {
-    constructor() {
-        if (!localStorage.getItem("toastTimeout")) {
-            localStorage.setItem("toastTimeout", "5000");
-        }
-        if (!localStorage.getItem("theme")) {
-            localStorage.setItem("theme", "system");
-        }
-    }
-    set<K extends keyof ISetting>(key: K, value: ISetting[K]): void {
-        localStorage.setItem(key, value.toString());
-    }
-    get<K extends keyof ISetting>(key: K): ISetting[K] {
-        return localStorage.getItem(key) as ISetting[K];
-    }
-}
-
 interface ITask {
     'AddVariable': { variable: string },
     'DelVariable': { variable: string, values: string[] },
@@ -67,17 +27,23 @@ const TaskAction: ITaskAction = {
     ReorderValue: async (data: ITask['ReorderValue']) => invoke("receive_state", { task: { "ReorderValue": data } }),
 }
 
-type EnvHashMap = { [key: string]: string[] };
-
 async function flush(): Promise<void> {
     return invoke("flush");
 }
-async function receive_state(): Promise<{ env: EnvHashMap, dirty: boolean }> {
+async function receive_state(): Promise<{ env: { [key: string]: string[] }, dirty: boolean }> {
     return invoke("send_state")
 }
 async function undo(): Promise<void> {
     return invoke("undo")
 }
+
+export const API = {
+    ...TaskAction,
+    flush,
+    receive_state,
+    undo,
+}
+
 
 interface TreeNode {
     name: string;
@@ -96,5 +62,5 @@ async function FST_scan(): Promise<void> {
 async function FST_state(): Promise<boolean> {
     return invoke("FST_state");
 }
-export { flush, TaskAction, receive_state, undo, FST_get_children, FST_scan, FST_state };
-export type { EnvHashMap };
+
+export { FST_get_children, FST_scan, FST_state };
